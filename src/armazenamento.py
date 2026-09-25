@@ -112,11 +112,11 @@ class ArmazenamentoD1:
             consulta_item, parametros_item = "SELECT id FROM itens WHERE id = ?", (experiencia["item_id"],)
         comandos.append(self.comando(f"""
             INSERT INTO experiencias
-                (item_id, data, nota, texto, pedido, preco_centavos, repetiria, criado_em, chave_envio)
+                (item_id, data, nota, texto, pedido, preco_centavos, voltaria, criado_em, chave_envio)
             VALUES (({consulta_item}), ?, ?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT(chave_envio) DO NOTHING
         """, (*parametros_item, experiencia["data"], experiencia["nota"], experiencia["texto"],
-              experiencia["pedido"], experiencia["preco_centavos"], experiencia["repetiria"], criado_em, chave)))
+              experiencia["pedido"], experiencia["preco_centavos"], experiencia["voltaria"], criado_em, chave)))
         # changes() refere-se ao INSERT anterior: um reenvio não altera as tags originais.
         comandos.append(self.comando("""
             INSERT INTO tags_experiencia (experiencia_id, tag)
@@ -131,7 +131,7 @@ class ArmazenamentoD1:
 
     async def listar_experiencias(self, item_id):
         return await self.consultar("""
-            SELECT id, data, nota, texto FROM experiencias
+            SELECT id, data, nota, texto, voltaria FROM experiencias
             WHERE item_id = ? ORDER BY data DESC, id DESC
         """, (item_id,))
 
@@ -152,9 +152,9 @@ class ArmazenamentoD1:
         await self.banco.batch([
             self.comando("""
                 UPDATE experiencias SET data = ?, nota = ?, texto = ?, pedido = ?,
-                    preco_centavos = ?, repetiria = ? WHERE id = ?
+                    preco_centavos = ?, voltaria = ? WHERE id = ?
             """, (experiencia["data"], experiencia["nota"], experiencia["texto"], experiencia["pedido"],
-                  experiencia["preco_centavos"], experiencia["repetiria"], experiencia_id)),
+                  experiencia["preco_centavos"], experiencia["voltaria"], experiencia_id)),
             self.comando("DELETE FROM tags_experiencia WHERE experiencia_id = ?", (experiencia_id,)),
             self.comando("INSERT INTO tags_experiencia (experiencia_id, tag) SELECT ?, value FROM json_each(?)",
                          (experiencia_id, json.dumps(experiencia["tags"], ensure_ascii=False))),

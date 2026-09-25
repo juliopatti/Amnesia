@@ -46,11 +46,11 @@ class TestDominio(unittest.TestCase):
 
     def test_experiencia_preserva_zero_nao_e_texto_livre(self):
         exp = preparar_experiencia(1, hoje="2026-09-24", nota=0, preco_centavos=0,
-                                   repetiria=False, texto=" Coxinha fria.\nNão volto. ",
+                                   voltaria=0, texto=" Coxinha fria.\nNão volto. ",
                                    tags=[" Comida ", "comida", "", "Bar"])
         self.assertEqual(exp["nota"], 0)
         self.assertEqual(exp["preco_centavos"], 0)
-        self.assertEqual(exp["repetiria"], 0)
+        self.assertEqual(exp["voltaria"], 0, "Nem a pau é resposta, não ausência")
         self.assertEqual(exp["texto"], "Coxinha fria.\nNão volto.")
         self.assertEqual(exp["tags"], ["comida", "bar"])
         self.assertEqual(exp["data"], "2026-09-24")
@@ -58,13 +58,14 @@ class TestDominio(unittest.TestCase):
     def test_experiencia_sem_avaliacao(self):
         exp = preparar_experiencia(1, hoje="2026-09-24")
         self.assertIsNone(exp["nota"])
-        self.assertIsNone(exp["repetiria"])
+        self.assertIsNone(exp["voltaria"])
         self.assertIsNone(exp["preco_centavos"])
 
     def test_rejeita_dados_invalidos_da_experiencia(self):
         for valores in ({"data": "2026-02-30"}, {"data": "20260924"},
                         {"preco_centavos": -1}, {"preco_centavos": 1.5},
-                        {"preco_centavos": True}, {"repetiria": "sim"}, {"tags": "bar"}):
+                        {"preco_centavos": True}, {"voltaria": "sim"}, {"voltaria": 6},
+                        {"voltaria": -1}, {"voltaria": True}, {"voltaria": 4.0}, {"tags": "bar"}):
             with self.subTest(valores=valores), self.assertRaises(ValueError):
                 preparar_experiencia(1, hoje="2026-09-24", **valores)
 

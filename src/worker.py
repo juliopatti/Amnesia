@@ -80,13 +80,13 @@ def dados_item(valores):
 
 
 def dados_experiencia(valores):
-    resposta = valores.get("repetiria", "")
-    if resposta not in ("", "sim", "nao"):
-        raise ValueError("Escolha sim, não ou deixe sem resposta.")
+    resposta = valores.get("voltaria", "")
+    if resposta not in ("", "0", "1", "2", "3", "4", "5"):
+        raise ValueError("Escolha uma das respostas de “Voltaria?” ou deixe sem resposta.")
     return {"data": valores.get("data"), "nota": valores.get("nota"),
             "texto": valores.get("texto", ""), "pedido": valores.get("pedido", ""),
             "preco_centavos": preco_em_centavos(valores.get("preco", "")),
-            "repetiria": {"": None, "sim": True, "nao": False}[resposta],
+            "voltaria": int(resposta) if resposta else None,
             "tags": [t for t in valores.get("tags", "").split(",") if t.strip()]}
 
 

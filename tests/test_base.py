@@ -92,5 +92,28 @@ class TestEsquema(unittest.TestCase):
             self.assertEqual(self.banco.execute(f"SELECT count(*) FROM {tabela}").fetchone()[0], 0)
 
 
+class TestMigracoes(unittest.TestCase):
+    def test_voltaria_converte_sim_nao_e_preserva_ausencia(self):
+        banco = sqlite3.connect(":memory:")
+        self.addCleanup(banco.close)
+        banco.execute("PRAGMA foreign_keys = ON")
+        pasta = Path(__file__).resolve().parents[1] / "migrations"
+        for nome in ("0001_inicial.sql", "0002_cadastro.sql"):
+            banco.executescript((pasta / nome).read_text())
+        banco.execute("INSERT INTO itens (nome, categoria, criado_em) VALUES ('Bar', 'lugar', 'x')")
+        for resposta in (1, 0, None):
+            banco.execute("INSERT INTO experiencias (item_id, data, repetiria, criado_em) VALUES (1, '2026-01-01', ?, 'x')",
+                          (resposta,))
+        banco.execute("INSERT INTO tags_experiencia VALUES (1, 'bar')")
+        banco.executescript((pasta / "0003_voltaria.sql").read_text())
+        self.assertEqual(banco.execute("SELECT voltaria FROM experiencias ORDER BY id").fetchall(), [(4,), (1,), (None,)])
+        colunas = [linha[1] for linha in banco.execute("PRAGMA table_info(experiencias)")]
+        self.assertNotIn("repetiria", colunas)
+        self.assertEqual(banco.execute("SELECT count(*) FROM tags_experiencia").fetchone(), (1,))
+        for invalido in (6, -1):
+            with self.assertRaises(sqlite3.IntegrityError):
+                banco.execute("UPDATE experiencias SET voltaria = ? WHERE id = 1", (invalido,))
+
+
 if __name__ == "__main__":
     unittest.main()

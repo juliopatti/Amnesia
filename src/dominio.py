@@ -12,6 +12,15 @@ CAMPOS_CATEGORIA = {
     "produto": ("marca", "onde_comprei", "link"),
 }
 MAX_FOTO_BYTES = 768 * 1024
+# "Voltaria?" do mais animado ao mais contrariado; None é sem resposta.
+VOLTARIA = {
+    5: "Sem sombra de dúvidas",
+    4: "Voltaria, ué",
+    3: "Talvez",
+    2: "Uai, sei não",
+    1: "Não por livre espontânea vontade",
+    0: "Nem a pau, Juvenal!",
+}
 MAX_FOTOS = 3
 MAX_BUSCA = 200
 MAX_TERMOS = 10
@@ -106,7 +115,7 @@ def contato_telefone(telefone):
 
 def preparar_experiencia(
     item_id, *, hoje, data=None, nota=None, texto="", pedido="",
-    preco_centavos=None, repetiria=None, tags=(),
+    preco_centavos=None, voltaria=None, tags=(),
 ):
     if item_id is not None and (type(item_id) is not int or item_id <= 0):
         raise ValueError("Informe um item válido.")
@@ -119,8 +128,8 @@ def preparar_experiencia(
         raise ValueError("Informe uma data válida no formato AAAA-MM-DD.")
     if preco_centavos is not None and (type(preco_centavos) is not int or preco_centavos < 0):
         raise ValueError("O preço precisa ser um inteiro em centavos, maior ou igual a zero.")
-    if repetiria is not None and type(repetiria) is not bool:
-        raise ValueError("Escolha sim, não ou deixe sem resposta.")
+    if voltaria is not None and (type(voltaria) is not int or voltaria not in VOLTARIA):
+        raise ValueError("Escolha uma das respostas de “Voltaria?” ou deixe sem resposta.")
     if not isinstance(tags, (list, tuple)):
         raise ValueError("Informe as tags como uma lista.")
     if len(tags) > 20:
@@ -134,7 +143,7 @@ def preparar_experiencia(
         "item_id": item_id, "data": data, "nota": normalizar_nota(nota),
         "texto": texto_limpo(texto, "Relato"), "pedido": texto_limpo(pedido, "Pedido"),
         "preco_centavos": preco_centavos,
-        "repetiria": None if repetiria is None else int(repetiria),
+        "voltaria": voltaria,
         "tags": tags_limpas,
     }
 

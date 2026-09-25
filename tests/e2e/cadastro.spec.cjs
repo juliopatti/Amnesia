@@ -226,8 +226,15 @@ test('edita item e experiência, reflete na busca e exclui com confirmação', a
   await expect(page.getByRole('alert')).toContainText('12,50');
   await expect(page.getByLabel('Como foi?')).toHaveValue('Espetinho no ponto.');
   await page.getByLabel('Quanto paguei (R$)').fill('');
+  await page.getByText('Nem a pau, Juvenal!').click();
   await page.getByRole('button', { name: 'Guardar alterações' }).click();
   await expect(page).toHaveURL(experiencia);
+  await expect(page.locator('.resumo')).toContainText('Voltaria? Nem a pau, Juvenal!');
+  await page.getByRole('link', { name: 'Editar experiência' }).click();
+  await expect(page.getByLabel('Nem a pau, Juvenal!')).toBeChecked();
+  await page.getByLabel('Sem resposta').check();
+  await page.getByRole('button', { name: 'Guardar alterações' }).click();
+  await expect(page.locator('.resumo')).not.toContainText('Voltaria?');
   await expect(page.locator('.resumo')).toContainText('4,5 / 5');
   await expect(page.locator('.resumo')).toContainText('Espetinho no ponto.');
 

@@ -55,10 +55,10 @@ class TestEdicao(unittest.IsolatedAsyncioTestCase):
 
     async def test_editar_experiencia_nota_tags_e_busca(self):
         await editar_experiencia(self.banco, self.exp_id, {'texto': 'Pastel quente', 'nota': None,
-            'pedido': '', 'preco_centavos': None, 'repetiria': True, 'tags': ['Petisco', 'petisco']}, AGORA)
+            'pedido': '', 'preco_centavos': None, 'voltaria': 5, 'tags': ['Petisco', 'petisco']}, AGORA)
         exp = await self.banco.obter_experiencia(self.exp_id)
-        self.assertEqual((exp['texto'], exp['nota'], exp['preco_centavos'], exp['repetiria']),
-                         ('Pastel quente', None, None, 1))
+        self.assertEqual((exp['texto'], exp['nota'], exp['preco_centavos'], exp['voltaria']),
+                         ('Pastel quente', None, None, 5))
         self.assertEqual(exp['data'], '2026-09-24', 'data vazia mantém a original')
         self.assertEqual(await self.banco.listar_tags(self.exp_id), ['petisco'])
         self.assertEqual(await self.ids('coxinha'), [])
@@ -134,15 +134,16 @@ class TestFormulariosEdicao(unittest.IsolatedAsyncioTestCase):
         self.addCleanup(binding.conexao.close)
         banco = ArmazenamentoD1(binding)
         salvo = await registrar_experiencia(banco, {'texto': '</textarea><script>x</script>', 'nota': 3.5,
-            'preco_centavos': 705, 'repetiria': False, 'tags': ['a', 'b']}, 'a' * 32, AGORA,
+            'preco_centavos': 705, 'voltaria': 0, 'tags': ['a', 'b']}, 'a' * 32, AGORA,
             novo_item={'nome': '"Bar"', 'detalhes': {'cidade': '<Rio>'}})
         exp = await banco.obter_experiencia(salvo['id'])
         valores = valores_experiencia(exp, await banco.listar_tags(salvo['id']))
-        self.assertEqual((valores['nota'], valores['preco'], valores['repetiria'], valores['tags']),
-                         ('3.5', '7,05', 'nao', 'a, b'))
+        self.assertEqual((valores['nota'], valores['preco'], valores['voltaria'], valores['tags']),
+                         ('3.5', '7,05', '0', 'a, b'))
         pagina = formulario_experiencia(exp, valores)
         self.assertIn('id="nota-3-5" value="3.5" checked', pagina)
-        self.assertIn('<option value="nao" selected>', pagina)
+        self.assertIn('id="voltaria-0" value="0" checked', pagina)
+        self.assertIn('Nem a pau, Juvenal!', pagina)
         self.assertNotIn('<script>x', pagina)
         item = await banco.obter_item(salvo['item_id'])
         pagina = formulario_item(item, valores_item(item))

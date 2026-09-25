@@ -5,7 +5,7 @@ import json
 import re
 from urllib.parse import urlencode
 
-from dominio import centavos_em_texto, contato_telefone
+from dominio import VOLTARIA, centavos_em_texto, contato_telefone
 
 BUSCA_VAZIA = {"texto": "", "categoria": "", "nota_min": None, "nota_max": None}
 # 422 traz a página com a mensagem de erro da busca; o htmx precisa trocá-la mesmo assim.
@@ -179,6 +179,10 @@ def nome_categoria(categoria):
     return "Lugar" if categoria == "lugar" else "Produto"
 
 
+def texto_voltaria(voltaria):
+    return "" if voltaria is None else f'<p class="voltaria-resposta">Voltaria? <strong>{escape(VOLTARIA[voltaria])}</strong></p>'
+
+
 def texto_nota(nota):
     return "Sem nota" if nota is None else f"{nota_texto(nota)} / 5"
 
@@ -205,13 +209,16 @@ def campos_item(valores):
 
 
 def campos_experiencia(valores):
-    repetiria = '<label for="repetiria">Voltaria / compraria de novo?</label><select id="repetiria" name="repetiria">'
-    for valor, rotulo in (("", "Ainda não sei"), ("sim", "Sim"), ("nao", "Não")):
-        repetiria += f'<option value="{valor}" {"selected" if valores.get("repetiria", "") == valor else ""}>{rotulo}</option>'
-    repetiria += '</select>'
+    voltaria = '<fieldset class="voltaria"><legend>Voltaria / compraria de novo?</legend><div class="opcoes-voltaria">'
+    for valor, rotulo in [("", "Sem resposta")] + [(str(nivel), texto) for nivel, texto in VOLTARIA.items()]:
+        identificador = f"voltaria-{valor or 'vazia'}"
+        marcado = "checked" if str(valores.get("voltaria", "")) == valor else ""
+        voltaria += (f'<input class="radio-visual" type="radio" name="voltaria" id="{identificador}" value="{valor}" {marcado}>'
+                     f'<label class="opcao-nota" for="{identificador}">{escape(rotulo)}</label>')
+    voltaria += '</div></fieldset>'
     return (campo("data", "Quando foi?", valores, "date") + campo("pedido", "O que pedi ou provei", valores, atributos='maxlength="10000"')
             + campo("preco", "Quanto paguei (R$)", valores, atributos='inputmode="decimal" maxlength="20" placeholder="12,50"')
-            + repetiria + campo("tags", "Tags", valores, atributos='maxlength="1100" placeholder="coxinha, happy hour"', ajuda="Separe por vírgulas. Até 20 tags."))
+            + voltaria + campo("tags", "Tags", valores, atributos='maxlength="1100" placeholder="coxinha, happy hour"', ajuda="Separe por vírgulas. Até 20 tags."))
 
 
 def aviso_erro(erro):
@@ -252,7 +259,7 @@ def valores_experiencia(experiencia, tags):
     return {"data": experiencia["data"], "nota": "" if nota is None else f"{nota:g}",
             "texto": experiencia["texto"], "pedido": experiencia["pedido"],
             "preco": centavos_em_texto(experiencia["preco_centavos"]),
-            "repetiria": {None: "", 1: "sim", 0: "nao"}[experiencia["repetiria"]],
+            "voltaria": "" if experiencia["voltaria"] is None else str(experiencia["voltaria"]),
             "tags": ", ".join(tags)}
 
 
@@ -296,7 +303,7 @@ def confirmacao(experiencia, fotos):
         <p class="sobretitulo">LEMBRANÇA GUARDADA</p><h1 class="titulo-form">Pode esquecer.<br>A gente anotou.</h1>
         <article class="resumo"><span class="categoria">{escape(experiencia['data'])} · {escape(texto_nota(experiencia['nota']))}</span>
         <h2>{escape(experiencia['nome'])}</h2><p class="relato">{escape(experiencia['texto'])}</p>
-        <p>{escape(experiencia['pedido'])}</p>
+        <p>{escape(experiencia['pedido'])}</p>{texto_voltaria(experiencia['voltaria'])}
         <p class="editar"><a href="/experiencias/{experiencia['id']}/editar">Editar experiência</a>
         <a href="/experiencias/{experiencia['id']}/excluir">Excluir</a></p></article><ul class="galeria">{imagens}</ul>
         <form id="anexar-fotos" data-experiencia="{experiencia['id']}" data-total="{len(fotos)}">
