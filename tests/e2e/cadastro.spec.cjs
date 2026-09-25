@@ -241,8 +241,11 @@ test('edita item e experiência, reflete na busca e exclui com confirmação', a
   await page.getByLabel('O que é?').selectOption('lugar');
   await page.getByLabel('Nome', { exact: true }).fill(`Bar certo ${marcador}`);
   await page.getByLabel('Bairro').fill('Lapa');
+  await page.getByLabel('Telefone / WhatsApp').fill('(11) 98765-4321');
   await page.getByRole('button', { name: 'Guardar alterações' }).click();
   await expect(page.getByRole('heading', { level: 1 })).toHaveText(`Bar certo ${marcador}`);
+  await expect(page.getByRole('link', { name: 'WhatsApp' })).toHaveAttribute('href', 'https://wa.me/5511987654321');
+  await expect(page.getByRole('link', { name: /^Ligar/ })).toHaveAttribute('href', 'tel:+5511987654321');
   await expect(page.locator('.experiencias')).toContainText('4,5 / 5');
 
   for (const [termo, total] of [[`erado ${marcador}`, 0], [`espeto ${marcador}`, 1], [`coxinha ${marcador}`, 0], [`lapa ${marcador}`, 1]]) {

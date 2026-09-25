@@ -1,7 +1,7 @@
 from datetime import datetime, timezone
 import unittest
 
-from dominio import (expressao_busca, horario_local, normalizar_nota, preparar_busca,
+from dominio import (contato_telefone, expressao_busca, horario_local, normalizar_nota, preparar_busca,
                      preparar_experiencia, preparar_item, raiz_busca)
 
 
@@ -92,6 +92,27 @@ class TestDominio(unittest.TestCase):
         for termo, esperado in casos.items():
             with self.subTest(termo=termo):
                 self.assertEqual(raiz_busca(termo), esperado)
+
+    def test_telefone_brasileiro_internacional_e_sem_ddd(self):
+        casos = {
+            "(11) 98765-4321": ("tel:+5511987654321", "https://wa.me/5511987654321"),
+            "011 3456.7890": ("tel:+551134567890", "https://wa.me/551134567890"),
+            "+1 415 555 0100": ("tel:+14155550100", "https://wa.me/14155550100"),
+            "98765-4321": ("tel:987654321", None),
+            "0800 123 4567": ("tel:08001234567", None),
+        }
+        for telefone, (ligar, whatsapp) in casos.items():
+            with self.subTest(telefone=telefone):
+                self.assertEqual(contato_telefone(telefone), {"ligar": ligar, "whatsapp": whatsapp})
+        for invalido in ("abc", "123", "1" * 16, "(11) 9876\n54321", "١١٩٨٧٦٥٤٣٢١", "11 98765-4321 ramal 2"):
+            with self.subTest(invalido=invalido), self.assertRaises(ValueError):
+                contato_telefone(invalido)
+        self.assertEqual(preparar_item("Bar", detalhes={"telefone": " (11) 98765-4321 "})["detalhes"]["telefone"],
+                         "(11) 98765-4321")
+        with self.assertRaises(ValueError):
+            preparar_item("Bar", detalhes={"telefone": "javascript:1"})
+        with self.assertRaises(ValueError):
+            preparar_item("Café", "produto", detalhes={"telefone": "(11) 98765-4321"})
 
     def test_preparar_busca_valida_filtros(self):
         busca = preparar_busca(" coxinha ", "lugar", "0", "3,5")

@@ -8,7 +8,7 @@ from urllib.parse import urlsplit
 
 FUSO_LOCAL = timezone(timedelta(hours=-3))
 CAMPOS_CATEGORIA = {
-    "lugar": ("endereco", "bairro", "cidade"),
+    "lugar": ("endereco", "bairro", "cidade", "telefone"),
     "produto": ("marca", "onde_comprei", "link"),
 }
 MAX_FOTO_BYTES = 768 * 1024
@@ -65,6 +65,8 @@ def preparar_item(nome, categoria="lugar", descricao="", detalhes=None):
     if any(campo not in CAMPOS_CATEGORIA[categoria] for campo in detalhes):
         raise ValueError("Há detalhes que não pertencem a essa categoria.")
     detalhes = {campo: texto_limpo(valor, campo, 1000) for campo, valor in detalhes.items()}
+    if detalhes.get("telefone"):
+        contato_telefone(detalhes["telefone"])
     if detalhes.get("link"):
         try:
             link = urlsplit(detalhes["link"])
@@ -79,6 +81,27 @@ def preparar_item(nome, categoria="lugar", descricao="", detalhes=None):
         "descricao": texto_limpo(descricao, "Descrição"),
         "detalhes": detalhes,
     }
+
+
+def contato_telefone(telefone):
+    """Valida o telefone como digitado e monta os destinos de ligação e WhatsApp.
+
+    Com DDD (10 ou 11 dígitos), assume o Brasil (+55). Com "+", o número já é
+    internacional. Sem DDD ou 0800, só dá para ligar: o WhatsApp exige o número completo.
+    """
+    if not re.fullmatch(r"\+?[0-9 ().-]+", telefone):
+        raise ValueError("Telefone: use só números, espaços, parênteses, + e -.")
+    digitos = re.sub(r"[^0-9]", "", telefone)
+    if not 8 <= len(digitos) <= 15:
+        raise ValueError("Telefone: informe de 8 a 15 dígitos.")
+    if not telefone.startswith("+"):
+        if digitos.startswith(("0300", "0500", "0800", "0900")):
+            return {"ligar": f"tel:{digitos}", "whatsapp": None}
+        digitos = digitos.lstrip("0")
+        if len(digitos) not in (10, 11):
+            return {"ligar": f"tel:{digitos}", "whatsapp": None}
+        digitos = "55" + digitos
+    return {"ligar": f"tel:+{digitos}", "whatsapp": f"https://wa.me/{digitos}"}
 
 
 def preparar_experiencia(

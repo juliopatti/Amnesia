@@ -5,7 +5,7 @@ import json
 import re
 from urllib.parse import urlencode
 
-from dominio import centavos_em_texto
+from dominio import centavos_em_texto, contato_telefone
 
 BUSCA_VAZIA = {"texto": "", "categoria": "", "nota_min": None, "nota_max": None}
 # 422 traz a página com a mensagem de erro da busca; o htmx precisa trocá-la mesmo assim.
@@ -192,10 +192,14 @@ def campos_identificacao(valores):
 
 def campos_item(valores):
     html = texto("descricao", "Sobre o lugar ou produto", valores, "O que vale lembrar sobre ele?")
-    for categoria, campos in (("lugar", (("endereco", "Endereço"), ("bairro", "Bairro"), ("cidade", "Cidade"))),
-                              ("produto", (("marca", "Marca"), ("onde_comprei", "Onde comprei"), ("link", "Link")))):
+    texto_livre = ("text", 'maxlength="1000"')
+    telefone = ("tel", 'inputmode="tel" autocomplete="off" maxlength="30" placeholder="(11) 98765-4321"')
+    for categoria, campos in (("lugar", (("endereco", "Endereço", texto_livre), ("bairro", "Bairro", texto_livre),
+                                         ("cidade", "Cidade", texto_livre), ("telefone", "Telefone / WhatsApp", telefone))),
+                              ("produto", (("marca", "Marca", texto_livre), ("onde_comprei", "Onde comprei", texto_livre),
+                                           ("link", "Link", ("url", 'maxlength="1000" placeholder="https://"'))))):
         html += f'<div data-categoria="{categoria}"><p class="categoria">Detalhes do {"lugar" if categoria == "lugar" else "produto"}</p>'
-        html += "".join(campo(nome, rotulo, valores, atributos='maxlength="1000"') for nome, rotulo in campos)
+        html += "".join(campo(nome, rotulo, valores, tipo, atributos) for nome, rotulo, (tipo, atributos) in campos)
         html += '</div>'
     return html
 
@@ -302,9 +306,28 @@ def confirmacao(experiencia, fotos):
         <a href="/">Voltar ao caderno</a></div>""", "Experiência guardada")
 
 
+def contatos_item(detalhes):
+    """Endereço em texto; telefone e link viram ações. Link e telefone já foram validados."""
+    linhas = []
+    local = " · ".join(detalhes[c] for c in ("endereco", "bairro", "cidade", "marca", "onde_comprei") if detalhes.get(c))
+    if local:
+        linhas.append(f'<p class="muted">{escape(local)}</p>')
+    acoes = ""
+    if detalhes.get("telefone"):
+        contato = contato_telefone(detalhes["telefone"])
+        acoes += f'<a class="botao secundario" href="{escape(contato["ligar"])}">Ligar · {escape(detalhes["telefone"])}</a>'
+        if contato["whatsapp"]:
+            acoes += f'<a class="botao secundario" href="{escape(contato["whatsapp"])}" rel="noopener noreferrer">WhatsApp</a>'
+    if detalhes.get("link"):
+        acoes += f'<a class="botao secundario" href="{escape(detalhes["link"])}" rel="noopener noreferrer">Abrir link</a>'
+    if acoes:
+        linhas.append(f'<div class="contatos">{acoes}</div>')
+    return "".join(linhas)
+
+
 def pagina_item(item, experiencias):
     """Lista simples das experiências para chegar à edição; a linha do tempo completa é o incremento 4."""
-    detalhes = [valor for valor in json.loads(item["detalhes"] or "{}").values() if valor]
+    detalhes = json.loads(item["detalhes"] or "{}")
     lista = "".join(
         f'<li><a href="/experiencias/{e["id"]}"><span class="categoria">{escape(e["data"])} · {escape(texto_nota(e["nota"]))}</span>'
         f'<span class="relato-curto">{escape(e["texto"][:140]) or "Sem relato."}</span></a></li>'
@@ -314,7 +337,7 @@ def pagina_item(item, experiencias):
     return estrutura(f"""<a class="voltar" href="/">← Meu caderno</a>
         <p class="sobretitulo">{nome_categoria(item['categoria']).upper()}</p><h1 class="titulo-form">{escape(item['nome'])}</h1>
         {f'<p class="relato">{escape(item["descricao"])}</p>' if item['descricao'] else ''}
-        {f'<p class="muted">{escape(" · ".join(detalhes))}</p>' if detalhes else ''}
+        {contatos_item(detalhes)}
         <p class="editar"><a href="/itens/{item['id']}/editar">Editar item</a></p>
         <div class="acoes"><a class="botao principal" href="/registrar?item_id={item['id']}">Registrar uma experiência</a></div>
         <h2>Experiências</h2><ul class="experiencias">{lista}</ul>""", item["nome"])

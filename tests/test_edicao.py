@@ -153,6 +153,21 @@ class TestFormulariosEdicao(unittest.IsolatedAsyncioTestCase):
         self.assertIn('&lt;Rio&gt;', detalhe)
         self.assertIn('Nenhuma experiência ainda', pagina_item(item, []))
 
+    async def test_telefone_vira_acoes_e_entra_na_busca(self):
+        binding = BancoSQLite()
+        self.addCleanup(binding.conexao.close)
+        banco = ArmazenamentoD1(binding)
+        salvo = await registrar_experiencia(banco, {}, 'a' * 32, AGORA,
+            novo_item={'nome': 'Bar', 'detalhes': {'telefone': '(11) 98765-4321'}})
+        pagina = pagina_item(await banco.obter_item(salvo['item_id']), [])
+        self.assertIn('href="tel:+5511987654321">Ligar · (11) 98765-4321', pagina)
+        self.assertIn('href="https://wa.me/5511987654321"', pagina)
+        self.assertEqual([i['id'] for i in (await buscar(banco, {'texto': '98765'}))['itens']], [salvo['item_id']])
+        sem_ddd = pagina_item({'id': 1, 'nome': 'X', 'categoria': 'lugar', 'descricao': '',
+                               'detalhes': '{"telefone": "9876-5432"}'}, [])
+        self.assertIn('tel:98765432', sem_ddd)
+        self.assertNotIn('wa.me', sem_ddd)
+
     def test_preco_ida_e_volta(self):
         for centavos in (None, 0, 5, 1250, 99999999):
             texto = centavos_em_texto(centavos)
