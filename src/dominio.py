@@ -15,7 +15,7 @@ CAMPOS_LOCAL = (("endereco", "Endereço"), ("bairro", "Bairro"), ("cidade", "Cid
 CATEGORIAS = {
     "restaurante": {"nome": "Bares e restaurantes", "singular": "Bar ou restaurante",
                     "exemplo": "Aquele bar da esquina…",
-                    "relato": "A coxinha prometeu tudo. Entregou arrependimento.", "campos": CAMPOS_LOCAL},
+                    "relato": "Aquele atendimento supimpa…", "campos": CAMPOS_LOCAL},
     "lugar": {"nome": "Lugares", "singular": "Lugar", "exemplo": "Aquele lugar sem pessoas…",
               "relato": "Lindo. Pena que todo mundo teve a mesma ideia.", "campos": CAMPOS_LOCAL},
     "produto": {"nome": "Produtos", "singular": "Produto", "exemplo": "Aquela obra de arte…", "relato": "Na foto parecia maior.",
