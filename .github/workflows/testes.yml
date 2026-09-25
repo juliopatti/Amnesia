@@ -31,7 +31,7 @@ jobs:
         run: python -m unittest discover -s tests -v
 
   navegador:
-    name: Cadastro no navegador e runtime Cloudflare local
+    name: Cadastro e busca no navegador com runtime Cloudflare local
     runs-on: ubuntu-latest
     timeout-minutes: 15
     env:
@@ -58,5 +58,5 @@ jobs:
           npx playwright install --with-deps chromium
       - name: Preparar banco isolado de testes
         run: uv run pywrangler d1 migrations apply amnesia --local --persist-to .wrangler/test-state
-      - name: Testar cadastro, fotos e proteção HTTP
+      - name: Testar cadastro, busca, fotos e proteção HTTP
         run: npm run test:e2e

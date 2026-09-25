@@ -6,7 +6,7 @@ pessoa; repositório de código público durante a avaliação da disciplina.
 [Boas práticas](BOAS_PRATICAS.md) descreve as convenções de código, documentação e
 testes. Nesta fase, os commits vão direto para `main`.
 
-## O que funciona agora — incremento 2
+## O que funciona agora — incremento 3
 
 - Criar lugar ou produto; só o nome exige digitação.
 - Guardar só o item ou já registrar uma experiência na mesma tela.
@@ -19,9 +19,13 @@ testes. Nesta fase, os commits vão direto para `main`.
   maior lado e 768 KiB por foto, converte para JPEG e remove os metadados.
 - Consultar os itens por categoria e registrar outra experiência a partir deles.
 - Manter o índice FTS atualizado na mesma transação do cadastro.
+- **Buscar** pelo campo no topo de qualquer página: nome, descrição do item, relatos,
+  pedidos, tags, endereço, bairro, cidade e detalhes do produto. Um item aparece uma
+  vez, mesmo com várias experiências que mencionem o termo; o trecho encontrado fica
+  destacado.
+- Filtrar por categoria e por faixa de **nota média do item** (0 a 5, meia em meia).
 
-A busca na interface é o incremento 3. A linha do tempo completa, média e resumo
-“voltaria?” são o 4. A página atual de experiência confirma o registro e permite
+A linha do tempo completa e o resumo “voltaria?” são o incremento 4. A página atual de experiência confirma o registro e permite
 anexar fotos. A publicação protegida por Access é o incremento 5.
 
 ## Rodar no seu computador (Linux)
@@ -75,7 +79,7 @@ biblioteca de processamento de imagens ou dependência de CDN.
 PYTHONPATH=src python3 -m unittest discover -s tests -v
 ```
 
-Resultado esperado: **34 testes e `OK`**. Esta suíte usa apenas a stdlib,
+Resultado esperado: **48 testes e `OK`**. Esta suíte usa apenas a stdlib,
 não faz chamadas de rede e pode rodar mesmo sem as instalações do passo 2.
 
 ### 4. Prepare ou atualize o banco local
@@ -106,7 +110,7 @@ Se a porta estiver ocupada, use `uv run pywrangler dev --port 8788` e abra a por
 8788. Se o app mostrar erro de banco, confira o passo 4 e reinicie o servidor.
 A instalação inicial das ferramentas e do runtime precisa de internet.
 
-### 6. Experimente o cadastro
+### 6. Experimente o cadastro e a busca
 
 1. Clique em **Registrar experiência**.
 2. Digite um nome, por exemplo “Bar de teste”.
@@ -116,6 +120,16 @@ A instalação inicial das ferramentas e do runtime precisa de internet.
 5. Se quiser, abra **Mais detalhes** ou escolha uma foto.
 6. Clique em **Guardar experiência**. Deve aparecer “Pode esquecer. A gente anotou.”
 7. Clique em **Outra experiência aqui** para registrar uma segunda visita no mesmo item.
+
+Depois, na página inicial:
+
+1. Digite `coxinha` no campo do topo. O bar aparece uma vez, com “Coxinha”
+   destacado no relato — mesmo que o nome do bar não tenha essa palavra.
+2. Troque por `COXINHA` ou `coxínha`: maiúsculas e acentos não importam.
+3. Escolha **Lugares** ou **Produtos** e uma faixa em **Média de … até …**.
+   Com JavaScript, os resultados mudam sem recarregar; sem ele, use **Buscar**.
+4. Teste entradas estranhas, como `"NOT (` ou `!!!`: a busca responde com uma
+   mensagem, nunca com erro. **Limpar busca** volta à lista completa.
 
 Para cadastrar apenas um item, preencha o nome e use **Só guardar o item, sem
 experiência**. A descrição do item fica em **Mais detalhes**. Fotos pertencem às
@@ -160,10 +174,11 @@ Para usar o Chrome já instalado no Linux, em vez do Chromium baixado:
 PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/google-chrome npm run test:e2e
 ```
 
-Os 6 cenários verificam cadastro, meia estrela/zero/ausência, teclado, produto,
+Os 7 cenários verificam cadastro, meia estrela/zero/ausência, teclado, produto,
 campos preservados após erro, htmx, cadastro sem JavaScript, escape de HTML, redução
 real de imagem, falha e repetição de upload, leitura da foto no R2, proteção de
-origem, reenvio concorrente e layout mobile sem rolagem horizontal.
+origem, reenvio concorrente, busca (relato, acentos, filtros, htmx, entradas especiais
+e estados vazios) e layout mobile sem rolagem horizontal.
 
 Em caso de falha, capturas e traces ficam em `test-results/`, ignorado pelo Git.
 Esses arquivos podem conter o conteúdo usado no teste; use somente dados fictícios.
@@ -179,8 +194,8 @@ mostra as execuções de cada push. O workflow configura:
 Não exige segredos Cloudflare e não realiza deploy. As dependências são baixadas
 na preparação do runner; os testes do app usam apenas recursos locais.
 
-Validação local do incremento 2: **34 testes offline nas duas versões de Python e
-6 cenários de navegador aprovados**. O teste automatizado de envio rápido não
+Validação local do incremento 3: **48 testes offline e 7 cenários de navegador
+aprovados**. O teste automatizado de envio rápido não
 substitui cronometrar uma pessoa usando um celular real; essa validação permanece
 para a entrega publicada. Também não houve teste em Safari/iPhone nesta etapa.
 
@@ -188,9 +203,9 @@ para a entrega publicada. Também não houve teste em Safari/iPhone nesta etapa.
 
 | Arquivo | Responsabilidade |
 | --- | --- |
-| `src/dominio.py` | Validações e normalizações puras |
-| `src/servicos.py` | Criar item, registrar experiência e anexar foto; dependências injetadas |
-| `src/armazenamento.py` | SQL parametrizado, transações D1, projeção FTS e adaptador R2 |
+| `src/dominio.py` | Validações, normalizações e montagem segura da consulta de busca |
+| `src/servicos.py` | Buscar, criar item, registrar experiência e anexar foto; dependências injetadas |
+| `src/armazenamento.py` | SQL parametrizado, transações D1, projeção e consulta FTS, adaptador R2 |
 | `src/worker.py` | Rotas HTTP, limites de corpo e checagem de origem |
 | `src/paginas.py` | HTML com escape de valores |
 | `static/` | CSS, htmx local e JavaScript de formulário/fotos |
@@ -207,6 +222,21 @@ confirmado prevalece**. Para registrar outra experiência, abra um novo formulá
 A gravação do item, experiência, tags e documento FTS ocorre em um único
 `D1.batch`. Se uma etapa falha, o lote é desfeito. A FTS agrega nome, descrição,
 localização, detalhes, relatos, pedidos e tags, com um documento por item.
+
+A busca transforma cada palavra digitada em um prefixo entre aspas (`"cox"*`), exigindo
+todas as palavras. Assim, aspas, `*`, parênteses e `AND`/`OR`/`NOT`/`NEAR` viram texto
+comum, e a consulta à FTS nunca fica malformada. O tokenizador `unicode61
+remove_diacritics 2`, já existente, ignora acentos e maiúsculas; não houve migração.
+Texto sem nenhuma letra ou número mostra um aviso em vez de listar tudo. O limite é
+200 caracteres e 10 palavras. Os resultados são ordenados por relevância (bm25, com
+peso maior para o nome).
+
+A média usa só experiências avaliadas: zero conta, “sem nota” não. Com qualquer
+limite de nota, itens sem avaliação ficam fora; sem limite, aparecem. A faixa compara
+a média exata, exibida com até duas casas. Filtros inválidos (por exemplo, mínimo
+maior que o máximo) retornam 422 com a mensagem na própria página; o htmx foi
+configurado para exibir essa resposta. A média é calculada a cada consulta, o que
+serve para um caderno pessoal; o desempenho com muitos registros ainda será medido.
 
 Fotos usam uma segunda requisição. R2 e D1 não têm transação conjunta: se a gravação
 dos metadados falha, o serviço tenta remover o objeto enviado. Falha simultânea de
@@ -236,7 +266,6 @@ publicar. `workers.dev` e previews permanecem desabilitados nesta fase.
 
 ## Próximos incrementos
 
-3. Busca única, filtro de categoria e faixa de nota média.
 4. Página do item com linha do tempo, média e “voltaria/compraria de novo?”.
 5. Deploy, Access e teste de registro em menos de 30 segundos no celular.
 
