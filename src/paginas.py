@@ -49,7 +49,7 @@ def formulario_busca(busca=None):
     campo_busca = f"""<label class="sr-only" for="q">Buscar nas lembranças</label>
         <div class="campo-busca"><input id="q" name="q" type="search" value="{escape(busca['texto'])}"
         maxlength="200" autocomplete="off" enterkeyhint="search"
-        placeholder="Coxinha, bairro, aquele café…"><button class="botao principal" type="submit">Buscar</button></div>"""
+        placeholder="O que era mesmo?"><button class="botao principal" type="submit">Buscar</button></div>"""
     if not completo:
         return f'<form class="busca" action="/" method="get" role="search">{campo_busca}</form>'
     chips = ""
@@ -188,6 +188,11 @@ def pilula(nome, valor, identificador, rotulo, marcado, classe="opcao-nota"):
             f'id="{identificador}" value="{escape(valor)}" {"checked" if marcado else ""}>{rotulo}</label>')
 
 
+def definicao_categoria(categoria):
+    """Categoria enviada inválida volta ao padrão só para exibir o formulário; a validação recusa depois."""
+    return CATEGORIAS.get(categoria_raiz(categoria), CATEGORIAS[CATEGORIA_PADRAO])
+
+
 def nome_categoria(categoria):
     return CATEGORIAS[categoria_raiz(categoria)]["singular"]
 
@@ -231,9 +236,9 @@ def campos_identificacao(valores):
     html = '<label for="categoria">O que é?</label><select id="categoria" name="categoria">'
     # O exemplo do campo Nome acompanha a categoria; fotos.js troca ao mudar a seleção.
     for slug, categoria in CATEGORIAS.items():
-        html += (f'<option value="{slug}" data-exemplo="{escape(categoria["exemplo"])}" '
+        html += (f'<option value="{slug}" data-exemplo="{escape(categoria["exemplo"])}" data-relato="{escape(categoria["relato"])}" '
                  f'{"selected" if valores["categoria"] == slug else ""}>{categoria["singular"]}</option>')
-    exemplo = escape(CATEGORIAS.get(categoria_raiz(valores["categoria"]), CATEGORIAS[CATEGORIA_PADRAO])["exemplo"])
+    exemplo = escape(definicao_categoria(valores["categoria"])["exemplo"])
     return html + '</select>' + campo("nome", "Nome", valores, atributos=f'required maxlength="200" autocomplete="off" placeholder="{exemplo}"')
 
 
@@ -289,7 +294,7 @@ def formulario(hoje, chave, item=None, valores=None, erro=""):
         <form id="cadastro" action="/registros" method="post">
         <input type="hidden" name="chave" value="{escape(chave)}">
         {identificacao}{estrelas(valores.get('nota', ''))}
-        {texto('texto', 'Como foi?', valores, 'A coxinha prometeu tudo. Entregou arrependimento.')}
+        {texto('texto', 'Como foi?', valores, escape(definicao_categoria(item["categoria"] if item else valores["categoria"])["relato"]))}
         <details {'open' if erro else ''}><summary>Mais detalhes <span>data, preço, tags e descrição</span></summary>{extras}</details>
         {seletor_fotos()}<div class="acoes"><button class="botao principal" type="submit" name="acao" value="experiencia">Guardar experiência</button>{salvar_item}</div>
         </form><section id="resultado-upload" class="aviso" aria-live="polite" hidden></section>""", titulo)

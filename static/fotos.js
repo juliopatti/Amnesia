@@ -4,9 +4,11 @@
   const selecoes = new WeakMap();
 
   function atualizarFormulario() {
-    const exemplo = document.querySelector('#categoria')?.selectedOptions[0]?.dataset.exemplo;
+    const opcao = document.querySelector('#categoria')?.selectedOptions[0];
     const nome = document.querySelector('#nome');
-    if (exemplo && nome) nome.placeholder = exemplo;
+    const relato = document.querySelector('#texto');
+    if (opcao && nome) nome.placeholder = opcao.dataset.exemplo;
+    if (opcao && relato) relato.placeholder = opcao.dataset.relato;
     document.querySelectorAll('[data-categoria]').forEach(grupo => {
       const selecionada = document.querySelector('#categoria')?.value || 'lugar';
       grupo.hidden = grupo.dataset.categoria !== selecionada;

@@ -287,6 +287,7 @@ test('categorias novas: filme com detalhes próprios e filtro por categoria', as
   await expect(page.getByLabel('Nome', { exact: true })).toHaveAttribute('placeholder', 'Aquele bar da esquina…');
   await page.getByLabel('O que é?').selectOption('filme');
   await expect(page.getByLabel('Nome', { exact: true })).toHaveAttribute('placeholder', 'Aquele em que você dormiu no meio…');
+  await expect(page.getByLabel('Como foi?')).toHaveAttribute('placeholder', 'Dormi no meio. Acordei no final. Não perdi nada.');
   await page.getByLabel('Nome', { exact: true }).fill(nome);
   await page.getByText('Mais detalhes', { exact: false }).click();
   await expect(page.locator('#filme-direcao')).toBeVisible();

@@ -14,17 +14,23 @@ CAMPOS_LOCAL = (("endereco", "Endereço"), ("bairro", "Bairro"), ("cidade", "Cid
 # Subcategorias usam o slug da raiz como prefixo ("musica.rock") e herdam os campos dela.
 CATEGORIAS = {
     "restaurante": {"nome": "Bares e restaurantes", "singular": "Bar ou restaurante",
-                    "exemplo": "Aquele bar da esquina…", "campos": CAMPOS_LOCAL},
-    "lugar": {"nome": "Lugares", "singular": "Lugar", "exemplo": "Aquele lugar sem pessoas…", "campos": CAMPOS_LOCAL},
-    "produto": {"nome": "Produtos", "singular": "Produto", "exemplo": "Aquela obra de arte…",
+                    "exemplo": "Aquele bar da esquina…",
+                    "relato": "A coxinha prometeu tudo. Entregou arrependimento.", "campos": CAMPOS_LOCAL},
+    "lugar": {"nome": "Lugares", "singular": "Lugar", "exemplo": "Aquele lugar sem pessoas…",
+              "relato": "Lindo. Pena que todo mundo teve a mesma ideia.", "campos": CAMPOS_LOCAL},
+    "produto": {"nome": "Produtos", "singular": "Produto", "exemplo": "Aquela obra de arte…", "relato": "Na foto parecia maior.",
                 "campos": (("marca", "Marca"), ("onde_comprei", "Onde comprei"), ("link", "Link"))},
     "filme": {"nome": "Filmes", "singular": "Filme", "exemplo": "Aquele em que você dormiu no meio…",
+              "relato": "Dormi no meio. Acordei no final. Não perdi nada.",
               "campos": (("direcao", "Direção"), ("ano", "Ano"), ("onde_assisti", "Onde assisti"))},
     "serie": {"nome": "Séries", "singular": "Série", "exemplo": "A que você largou na segunda temporada…",
+              "relato": "Três temporadas boas e uma que fingimos que não existiu.",
               "campos": (("criacao", "Criação"), ("ano", "Ano"), ("onde_assisti", "Onde assisti"))},
     "livro": {"nome": "Livros", "singular": "Livro", "exemplo": "O que está na cabeceira há um ano…",
+              "relato": "Comecei empolgado. Parei na página 43.",
               "campos": (("autoria", "Autoria"), ("editora", "Editora"), ("ano", "Ano"))},
     "musica": {"nome": "Música", "singular": "Música", "exemplo": "Perdida na playlist de 8 anos atrás…",
+               "relato": "Ouvi 40 vezes seguidas. Os vizinhos também.",
                "campos": (("artista", "Artista"), ("album", "Álbum"), ("ano", "Ano"), ("link", "Link"))},
 }
 CATEGORIA_PADRAO = "restaurante"
