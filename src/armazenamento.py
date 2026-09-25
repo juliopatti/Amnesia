@@ -129,6 +129,50 @@ class ArmazenamentoD1:
         resultados = await self.banco.batch(comandos)
         return dict(resultados[-1]["results"][0])
 
+    async def listar_experiencias(self, item_id):
+        return await self.consultar("""
+            SELECT id, data, nota, texto FROM experiencias
+            WHERE item_id = ? ORDER BY data DESC, id DESC
+        """, (item_id,))
+
+    async def listar_tags(self, experiencia_id):
+        linhas = await self.consultar("SELECT tag FROM tags_experiencia WHERE experiencia_id = ? ORDER BY rowid",
+                                      (experiencia_id,))
+        return [linha["tag"] for linha in linhas]
+
+    async def atualizar_item(self, item_id, item):
+        await self.banco.batch([
+            self.comando("UPDATE itens SET nome = ?, categoria = ?, descricao = ?, detalhes = ? WHERE id = ?",
+                         (item["nome"], item["categoria"], item["descricao"],
+                          json.dumps(item["detalhes"], ensure_ascii=False), item_id)),
+            *self._indexar("SELECT id FROM itens WHERE id = ?", (item_id,)),
+        ])
+
+    async def atualizar_experiencia(self, experiencia_id, experiencia):
+        await self.banco.batch([
+            self.comando("""
+                UPDATE experiencias SET data = ?, nota = ?, texto = ?, pedido = ?,
+                    preco_centavos = ?, repetiria = ? WHERE id = ?
+            """, (experiencia["data"], experiencia["nota"], experiencia["texto"], experiencia["pedido"],
+                  experiencia["preco_centavos"], experiencia["repetiria"], experiencia_id)),
+            self.comando("DELETE FROM tags_experiencia WHERE experiencia_id = ?", (experiencia_id,)),
+            self.comando("INSERT INTO tags_experiencia (experiencia_id, tag) SELECT ?, value FROM json_each(?)",
+                         (experiencia_id, json.dumps(experiencia["tags"], ensure_ascii=False))),
+            *self._indexar("SELECT item_id FROM experiencias WHERE id = ?", (experiencia_id,)),
+        ])
+
+    async def excluir_experiencia(self, experiencia_id, item_id):
+        # Exclusões explícitas: não dependem de ON DELETE CASCADE estar ativo no binding.
+        await self.banco.batch([
+            self.comando("DELETE FROM fotos WHERE experiencia_id = ?", (experiencia_id,)),
+            self.comando("DELETE FROM tags_experiencia WHERE experiencia_id = ?", (experiencia_id,)),
+            self.comando("DELETE FROM experiencias WHERE id = ?", (experiencia_id,)),
+            *self._indexar("SELECT id FROM itens WHERE id = ?", (item_id,)),
+        ])
+
+    async def excluir_foto(self, foto_id):
+        await self.banco.batch([self.comando("DELETE FROM fotos WHERE id = ?", (foto_id,))])
+
     async def listar_fotos(self, experiencia_id):
         return await self.consultar("SELECT * FROM fotos WHERE experiencia_id = ? ORDER BY ordem, id",
                                     (experiencia_id,))

@@ -71,6 +71,7 @@ class ArquivosMemoria:
     def __init__(self):
         self.arquivos = {}
         self.falhar = False
+        self.falhar_exclusao = False
 
     async def salvar(self, chave, conteudo):
         if self.falhar:
@@ -78,4 +79,6 @@ class ArquivosMemoria:
         self.arquivos[chave] = conteudo
 
     async def excluir(self, chave):
+        if self.falhar_exclusao:
+            raise OSError('Falha de exclusão simulada')
         self.arquivos.pop(chave, None)

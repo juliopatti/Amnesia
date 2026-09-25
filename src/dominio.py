@@ -177,6 +177,11 @@ def preco_em_centavos(valor):
     return int(Decimal(valor.replace(",", ".")) * 100)
 
 
+def centavos_em_texto(centavos):
+    """Inverso de preco_em_centavos para preencher o formulário; desconhecido fica vazio."""
+    return "" if centavos is None else f"{centavos // 100},{centavos % 100:02d}"
+
+
 def validar_foto(conteudo, tipo):
     if tipo != "image/jpeg":
         raise ValueError("A foto precisa ser convertida para JPEG no navegador.")

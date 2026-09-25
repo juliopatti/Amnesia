@@ -57,3 +57,51 @@ async def anexar_foto(armazenamento, arquivos, experiencia_id, chave, conteudo, 
             return existente
         await arquivos.excluir(chave_r2)
         raise
+
+
+async def editar_item(armazenamento, item_id, dados):
+    item = preparar_item(**dados)
+    if not await armazenamento.obter_item(item_id):
+        raise LookupError("Esse item não foi encontrado.")
+    await armazenamento.atualizar_item(item_id, item)
+
+
+async def editar_experiencia(armazenamento, experiencia_id, dados, instante):
+    atual = await armazenamento.obter_experiencia(experiencia_id)
+    if not atual:
+        raise LookupError("Essa experiência não foi encontrada.")
+    # Data apagada no formulário mantém a original, em vez de virar "hoje" sem aviso.
+    dados = {**dados, "data": dados.get("data") or atual["data"]}
+    experiencia = preparar_experiencia(atual["item_id"], hoje=horario_local(instante)[:10], **dados)
+    await armazenamento.atualizar_experiencia(experiencia_id, experiencia)
+    return atual["item_id"]
+
+
+async def _excluir_arquivos(arquivos, chaves):
+    """R2 e D1 não têm transação conjunta: o banco já foi atualizado; falhas viram objetos órfãos."""
+    orfaos = 0
+    for chave in chaves:
+        try:
+            await arquivos.excluir(chave)
+        except Exception:
+            orfaos += 1
+    return orfaos
+
+
+async def excluir_experiencia(armazenamento, arquivos, experiencia_id):
+    experiencia = await armazenamento.obter_experiencia(experiencia_id)
+    if not experiencia:
+        raise LookupError("Essa experiência não foi encontrada.")
+    fotos = await armazenamento.listar_fotos(experiencia_id)
+    await armazenamento.excluir_experiencia(experiencia_id, experiencia["item_id"])
+    orfaos = await _excluir_arquivos(arquivos, [foto["chave_r2"] for foto in fotos])
+    return {"item_id": experiencia["item_id"], "orfaos": orfaos}
+
+
+async def excluir_foto(armazenamento, arquivos, foto_id):
+    foto = await armazenamento.obter_foto(foto_id)
+    if not foto:
+        raise LookupError("Essa foto não foi encontrada.")
+    await armazenamento.excluir_foto(foto_id)
+    orfaos = await _excluir_arquivos(arquivos, [foto["chave_r2"]])
+    return {"experiencia_id": foto["experiencia_id"], "orfaos": orfaos}

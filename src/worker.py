@@ -1,6 +1,7 @@
 """Fronteira HTTP: origem, limites, formulários e respostas. Regras ficam nos serviços."""
 
 from datetime import datetime, timezone
+import re
 from urllib.parse import parse_qs, urlsplit
 from uuid import uuid4
 
@@ -8,10 +9,13 @@ from workers import Response, WorkerEntrypoint
 
 from armazenamento import ArmazenamentoD1, ArmazenamentoR2
 from dominio import CAMPOS_CATEGORIA, MAX_BUSCA, MAX_FOTO_BYTES, horario_local, preco_em_centavos
-from paginas import pagina_inicial, formulario, confirmacao, item_guardado
-from servicos import verificar_base, buscar, criar_item, registrar_experiencia, anexar_foto
+from paginas import (pagina_inicial, formulario, confirmacao, pagina_item, formulario_item,
+                     formulario_experiencia, confirmar_exclusao, valores_item, valores_experiencia)
+from servicos import (verificar_base, buscar, criar_item, registrar_experiencia, anexar_foto,
+                      editar_item, editar_experiencia, excluir_experiencia, excluir_foto)
 
 
+RECURSO = re.compile(r"/(itens|experiencias|fotos)/([^/]+)(?:/(editar|excluir))?")
 CABECALHOS = {
     "Cache-Control": "no-store", "X-Content-Type-Options": "nosniff",
     "Referrer-Policy": "same-origin",
@@ -75,6 +79,31 @@ def dados_item(valores):
             "detalhes": {campo: valores.get(campo, "") for campo in CAMPOS_CATEGORIA.get(categoria, ())}}
 
 
+def dados_experiencia(valores):
+    resposta = valores.get("repetiria", "")
+    if resposta not in ("", "sim", "nao"):
+        raise ValueError("Escolha sim, não ou deixe sem resposta.")
+    return {"data": valores.get("data"), "nota": valores.get("nota"),
+            "texto": valores.get("texto", ""), "pedido": valores.get("pedido", ""),
+            "preco_centavos": preco_em_centavos(valores.get("preco", "")),
+            "repetiria": {"": None, "sim": True, "nao": False}[resposta],
+            "tags": [t for t in valores.get("tags", "").split(",") if t.strip()]}
+
+
+async def ler_formulario(request):
+    """Retorna None para formatos diferentes de formulário simples; a rota responde 415."""
+    if request.headers.get("Content-Type", "").split(";")[0] != "application/x-www-form-urlencoded":
+        return None
+    conteudo = (await ler_corpo(request, 64 * 1024)).decode("utf-8")
+    campos = parse_qs(conteudo, keep_blank_values=True, max_num_fields=40)
+    if any(len(valores) != 1 for valores in campos.values()):
+        raise ValueError("O formulário contém campos repetidos.")
+    return {campo: valores[0] for campo, valores in campos.items()}
+
+
+FORMATO_RECUSADO = {"erro": "Formato de formulário não suportado."}
+
+
 class Default(WorkerEntrypoint):
     async def pagina_busca(self, banco, consulta):
         criterios = {campo: consulta.get(parametro, [""])[0] for campo, parametro in
@@ -89,6 +118,75 @@ class Default(WorkerEntrypoint):
                              "nota_min": None, "nota_max": None}, "itens": [], "tem_mais": False}
             return html(pagina_inicial(categorias, eco, erro=str(erro)), 422)
 
+    async def recurso(self, request, banco, instante, tipo, texto_id, acao):
+        """Páginas, edição e exclusão de itens, experiências e fotos. None significa rota inexistente."""
+        registro_id = identificador(texto_id)
+        arquivos = ArmazenamentoR2(self.env.FOTOS)
+        valores = None
+        if request.method == "POST":
+            if acao is None:
+                return None
+            valores = await ler_formulario(request)
+            if valores is None:
+                return resposta_json(FORMATO_RECUSADO, 415)
+        if tipo == "itens":
+            item = await banco.obter_item(registro_id)
+            if not item:
+                raise LookupError("Esse item não foi encontrado.")
+            if acao is None:
+                return html(pagina_item(item, await banco.listar_experiencias(registro_id)))
+            if acao != "editar":
+                return None
+            if valores is None:
+                return html(formulario_item(item, valores_item(item)))
+            try:
+                await editar_item(banco, registro_id, dados_item(valores))
+            except ValueError as erro:
+                return html(formulario_item(item, {"categoria": item["categoria"], **valores}, str(erro)), 422)
+            return redirecionar(f"/itens/{registro_id}")
+        if tipo == "experiencias":
+            experiencia = await banco.obter_experiencia(registro_id)
+            if not experiencia:
+                raise LookupError("Essa experiência não foi encontrada.")
+            if acao is None:
+                return html(confirmacao(experiencia, await banco.listar_fotos(registro_id)))
+            if acao == "editar" and valores is None:
+                tags = await banco.listar_tags(registro_id)
+                return html(formulario_experiencia(experiencia, valores_experiencia(experiencia, tags)))
+            if acao == "editar":
+                try:
+                    await editar_experiencia(banco, registro_id, dados_experiencia(valores), instante)
+                except ValueError as erro:
+                    return html(formulario_experiencia(experiencia, valores, str(erro)), 422)
+                return redirecionar(f"/experiencias/{registro_id}")
+            if valores is None:
+                return html(confirmar_exclusao(
+                    "Excluir esta experiência?",
+                    f"{experiencia['data']} em {experiencia['nome']}. Relato, tags e fotos vão embora juntos.",
+                    f"/experiencias/{registro_id}/excluir", f"/experiencias/{registro_id}"))
+            resultado = await excluir_experiencia(banco, arquivos, registro_id)
+            if resultado["orfaos"]:
+                print("Fotos não removidas do R2:", resultado["orfaos"])
+            return redirecionar(f"/itens/{resultado['item_id']}")
+        foto = await banco.obter_foto(registro_id)
+        if not foto:
+            raise LookupError("Essa foto não foi encontrada.")
+        if acao is None:
+            objeto = await arquivos.obter(foto["chave_r2"])
+            if objeto is None:
+                raise LookupError("Essa foto não foi encontrada.")
+            return Response(objeto.body, headers={**CABECALHOS, "Content-Type": "image/jpeg"})
+        if acao != "excluir":
+            return None
+        if valores is None:
+            previa = f'<img class="previa-exclusao" src="/fotos/{registro_id}" alt="Foto que será removida">'
+            return html(confirmar_exclusao("Remover esta foto?", "A experiência continua; só a foto sai.",
+                f"/fotos/{registro_id}/excluir", f"/experiencias/{foto['experiencia_id']}", previa))
+        resultado = await excluir_foto(banco, arquivos, registro_id)
+        if resultado["orfaos"]:
+            print("Foto não removida do R2:", resultado["orfaos"])
+        return redirecionar(f"/experiencias/{resultado['experiencia_id']}")
+
     async def fetch(self, request):
         url = urlsplit(request.url)
         caminho = url.path
@@ -99,7 +197,11 @@ class Default(WorkerEntrypoint):
         if request.method == "POST" and not origem_permitida(request):
             return resposta_json({"erro": "Envio recusado: abra o formulário neste site."}, 403)
         try:
-            if request.method == "GET":
+            if encontrado := RECURSO.fullmatch(caminho):
+                resposta = await self.recurso(request, banco, instante, *encontrado.groups())
+                if resposta is not None:
+                    return resposta
+            elif request.method == "GET":
                 if caminho in ("/estilo.css", "/fotos.js", "/htmx.min.js"):
                     return await self.env.ASSETS.fetch(request)
                 consulta = parse_qs(url.query)
@@ -114,30 +216,10 @@ class Default(WorkerEntrypoint):
                         if not item:
                             raise LookupError("Esse item não foi encontrado.")
                     return html(formulario(horario_local(instante)[:10], uuid4().hex, item))
-                if caminho.startswith("/experiencias/"):
-                    experiencia = await banco.obter_experiencia(identificador(caminho.removeprefix("/experiencias/")))
-                    if not experiencia:
-                        raise LookupError("Essa experiência não foi encontrada.")
-                    return html(confirmacao(experiencia, await banco.listar_fotos(experiencia["id"])))
-                if caminho.startswith("/itens/"):
-                    item = await banco.obter_item(identificador(caminho.removeprefix("/itens/")))
-                    if not item:
-                        raise LookupError("Esse item não foi encontrado.")
-                    return html(item_guardado(item))
-                if caminho.startswith("/fotos/"):
-                    foto = await banco.obter_foto(identificador(caminho.removeprefix("/fotos/")))
-                    objeto = await ArmazenamentoR2(self.env.FOTOS).obter(foto["chave_r2"]) if foto else None
-                    if objeto is None:
-                        raise LookupError("Essa foto não foi encontrada.")
-                    return Response(objeto.body, headers={**CABECALHOS, "Content-Type": "image/jpeg"})
             elif caminho == "/registros":
-                if request.headers.get("Content-Type", "").split(";")[0] != "application/x-www-form-urlencoded":
-                    return resposta_json({"erro": "Formato de formulário não suportado."}, 415)
-                conteudo = (await ler_corpo(request, 64 * 1024)).decode("utf-8")
-                campos = parse_qs(conteudo, keep_blank_values=True, max_num_fields=40)
-                if any(len(valores) != 1 for valores in campos.values()):
-                    raise ValueError("O formulário contém campos repetidos.")
-                valores = {campo: valores[0] for campo, valores in campos.items()}
+                valores = await ler_formulario(request)
+                if valores is None:
+                    return resposta_json(FORMATO_RECUSADO, 415)
                 quer_json = "application/json" in request.headers.get("Accept", "")
                 item_id = identificador(valores["item_id"]) if valores.get("item_id") else None
                 try:
@@ -148,15 +230,7 @@ class Default(WorkerEntrypoint):
                     else:
                         if valores.get("acao", "experiencia") != "experiencia":
                             raise ValueError("Ação desconhecida.")
-                        resposta = valores.get("repetiria", "")
-                        if resposta not in ("", "sim", "nao"):
-                            raise ValueError("Escolha sim, não ou deixe sem resposta.")
-                        dados = {"data": valores.get("data"), "nota": valores.get("nota"),
-                                 "texto": valores.get("texto", ""), "pedido": valores.get("pedido", ""),
-                                 "preco_centavos": preco_em_centavos(valores.get("preco", "")),
-                                 "repetiria": {"": None, "sim": True, "nao": False}[resposta],
-                                 "tags": [t for t in valores.get("tags", "").split(",") if t.strip()]}
-                        salvo = await registrar_experiencia(banco, dados, chave, instante,
+                        salvo = await registrar_experiencia(banco, dados_experiencia(valores), chave, instante,
                             item_id=item_id, novo_item=dados_item(valores) if item_id is None else None)
                         destino = {"url": f"/experiencias/{salvo['id']}", "experiencia_id": salvo["id"], "item_id": salvo["item_id"]}
                     return resposta_json(destino) if quer_json else redirecionar(destino["url"])
