@@ -31,6 +31,10 @@
 - Migrações que convertem dados ganham teste com registros no formato anterior e
   são aplicadas no D1 local de testes antes do commit.
 - A CSP proíbe `style` e `script` inline: estilos variáveis usam classes do CSS.
+- Não adotar serviço que exija cartão de crédito ou conta de cobrança, mesmo em plano
+  gratuito. Conferir isso na documentação antes de propor o serviço.
+- Categorias vêm de `CATEGORIAS` (`src/dominio.py`); subcategorias usam a raiz como
+  prefixo do slug (`musica.rock`). Não duplicar listas de categorias no código.
 - Evitar abstrações e dependências sem necessidade concreta.
 
 ## Estratégia de testes

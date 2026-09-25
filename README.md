@@ -8,7 +8,10 @@ testes. Nesta fase, os commits vão direto para `main`.
 
 ## O que funciona agora — incremento 4
 
-- Criar lugar ou produto; só o nome exige digitação.
+- Registrar itens em sete categorias: **Bares e restaurantes**, **Lugares** (cidades,
+  passeios, turismo), **Produtos**, **Filmes**, **Séries**, **Livros** e **Música**.
+  Só o nome exige digitação; cada categoria tem seus próprios detalhes (endereço e
+  telefone, direção e ano, autoria e editora, artista e álbum…).
 - Guardar só o item ou já registrar uma experiência na mesma tela.
 - Registrar outras experiências em um item existente.
 - Escolher notas de **0 a 5 em passos de meia estrela**, por toque ou teclado.
@@ -18,7 +21,8 @@ testes. Nesta fase, os commits vão direto para `main`.
 - Responder “Voltaria / compraria de novo?” numa escala: Sem sombra de dúvidas,
   Voltaria ué, Talvez, Uai sei não, Não por livre espontânea vontade ou Nem a pau,
   Juvenal! “Sem resposta” é diferente de qualquer uma delas.
-- Guardar telefone/WhatsApp do lugar. A página dele oferece **Ligar** e **WhatsApp**.
+- Guardar telefone/WhatsApp de bares, restaurantes e lugares. A página deles oferece
+  **Ligar** e **WhatsApp**.
 - Anexar até 3 fotos por experiência. O navegador reduz para até 1600 pixels no
   maior lado e 768 KiB por foto, converte para JPEG e remove os metadados.
 - Consultar os itens por categoria e registrar outra experiência a partir deles.
@@ -36,7 +40,7 @@ Tocar no nome de um item abre a página dele: **nota média** em estrelas, resum
 “Voltaria?” (quantas respostas foram sim e qual foi a última), descrição, endereço,
 contatos e as experiências da mais recente para a mais antiga, com a miniatura da
 primeira foto. Cada experiência abre na própria página, com tudo o que foi anotado.
-A publicação protegida por Access é o incremento 5.
+A publicação, com login próprio, é o incremento 5.
 
 ## Rodar no seu computador (Linux)
 
@@ -89,7 +93,7 @@ biblioteca de processamento de imagens ou dependência de CDN.
 PYTHONPATH=src python3 -m unittest discover -s tests -v
 ```
 
-Resultado esperado: **68 testes e `OK`**. Esta suíte usa apenas a stdlib,
+Resultado esperado: **76 testes e `OK`**. Esta suíte usa apenas a stdlib,
 não faz chamadas de rede e pode rodar mesmo sem as instalações do passo 2.
 
 ### 4. Prepare ou atualize o banco local
@@ -102,6 +106,8 @@ Responda `y` se houver confirmação. O comando aplica só as migrações que fa
 Rode de novo sempre que atualizar o código: sem a migração nova, o app falha ao
 gravar.
 
+A `0004_categorias.sql` move os itens de “Lugar” para “Bares e restaurantes”, que era o
+uso até então; “Lugares” passa a ser para cidades e turismo. Os detalhes não mudam.
 A `0003_voltaria.sql` converte as respostas antigas: **Sim** vira “Voltaria, ué” e
 **Não** vira “Não por livre espontânea vontade”; sem resposta continua sem resposta.
 Antes de aplicá-la sobre dados reais, faça uma cópia:
@@ -204,11 +210,12 @@ Para usar o Chrome já instalado no Linux, em vez do Chromium baixado:
 PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/google-chrome npm run test:e2e
 ```
 
-Os 8 cenários verificam cadastro, meia estrela/zero/ausência, teclado, produto,
+Os 9 cenários verificam cadastro, meia estrela/zero/ausência, teclado, produto,
 campos preservados após erro, htmx, cadastro sem JavaScript, escape de HTML, redução
 real de imagem, falha e repetição de upload, leitura da foto no R2, proteção de
 origem, reenvio concorrente, busca (relato, acentos, filtros, htmx, entradas especiais
-e estados vazios), edição com e sem JavaScript refletida na busca, exclusão de
+e estados vazios), categorias com detalhes próprios e filtro, edição com e sem
+JavaScript refletida na busca, exclusão de
 experiência e de foto com confirmação e layout mobile sem rolagem horizontal.
 
 Em caso de falha, capturas e traces ficam em `test-results/`, ignorado pelo Git.
@@ -225,7 +232,7 @@ mostra as execuções de cada push. O workflow configura:
 Não exige segredos Cloudflare e não realiza deploy. As dependências são baixadas
 na preparação do runner; os testes do app usam apenas recursos locais.
 
-Validação local do incremento 4: **68 testes offline e 8 cenários de
+Validação local do incremento 4 e das categorias: **76 testes offline e 9 cenários de
 navegador aprovados**. O teste automatizado de envio rápido não
 substitui cronometrar uma pessoa usando um celular real; essa validação permanece
 para a entrega publicada. Também não houve teste em Safari/iPhone nesta etapa.
@@ -243,9 +250,17 @@ para a entrega publicada. Também não houve teste em Safari/iPhone nesta etapa.
 | `migrations/` | Evolução do esquema sem reescrever migrações anteriores |
 | `tests/` | Regras, serviços com dublês, SQL real em SQLite e testes de navegador |
 
-O item contém nome, descrição e detalhes em JSON por categoria. Novas categorias
-exigem cadastro na tabela `categorias`, definição em `CAMPOS_CATEGORIA` e campos no
-formulário, sem reescrever as tabelas. Experiências têm data, nota opcional, relato,
+O item contém nome, descrição e detalhes em JSON por categoria. `CATEGORIAS`, em
+`src/dominio.py`, é a fonte única de nomes, ordem e campos: o formulário, os filtros
+e a página do item são gerados a partir dela. A tabela `categorias` guarda os mesmos
+slugs só para a integridade referencial, e um teste garante que as duas batem. Nova
+categoria = entrada em `CATEGORIAS` + migração inserindo o slug; nenhuma tabela muda.
+
+Subcategorias (Música → Rock, Blues…) já são suportadas pelo desenho, embora nenhuma
+exista: o slug usa a raiz como prefixo (`musica.rock`), herda os campos dela e
+aparece ao filtrar pela raiz. Para criar uma, basta inserir o slug e o nome na tabela.
+Nos formulários, cada campo de detalhe leva a categoria no nome (`restaurante-bairro`),
+para que categorias com os mesmos campos não gerem ids ou nomes repetidos. Experiências têm data, nota opcional, relato,
 pedido, preço em centavos de reais, “voltaria?” de 0 (Nem a pau) a 5 (Sem sombra de
 dúvidas) ou nulo, e tags. O telefone fica nos detalhes do lugar. Com DDD, o app
 assume +55 para o WhatsApp; sem DDD ou 0800, oferece só a ligação.
@@ -290,7 +305,7 @@ validação completa por decodificação de imagem no servidor.
 As escritas exigem `Origin` igual ao site e rejeitam requisições marcadas como
 cross-site. SQL usa parâmetros, HTML usa escape e respostas incluem CSP e
 `nosniff`. Fotos são servidas pelo Worker; nenhum bucket público é necessário.
-Isso não substitui o Access: a autenticação de produção será configurada antes do deploy.
+Isso não substitui autenticação: o login próprio será implementado antes da publicação.
 
 Stdlib usada no runtime: `datetime`, `decimal`, `html`, `json`, `re`, `urllib.parse`
 e `uuid`. Compatibilidade conferida na [documentação de Python Workers](https://developers.cloudflare.com/workers/languages/python/stdlib/)
@@ -303,12 +318,29 @@ SQLite e dublês ajudam a testar SQL e falhas, mas não substituem a integraçã
 estão ignorados pelo Git. `.env.example` tem apenas orientações. Não é necessário
 copiar credenciais de outro projeto. Dados reais não devem entrar no repositório público.
 
-No incremento 5, usaremos sua conta Cloudflare para criar recursos próprios do
-amnesia, aplicar as migrações remotas, configurar Access apenas para seu e-mail e
-publicar. `workers.dev` e previews permanecem desabilitados nesta fase.
+### Mudança de plano: publicação sem cartão
+
+O plano original usava R2 para fotos e Cloudflare Access para o login. Os dois exigem
+cartão de crédito cadastrado, mesmo no plano gratuito, o que está fora das
+restrições do projeto. O incremento 5 passa a usar apenas serviços sem cartão:
+
+| Parte | Antes | Agora |
+| --- | --- | --- |
+| App e textos | Workers + D1 | Workers + D1 no plano gratuito (sem cartão) |
+| Fotos | R2 | Pasta privada no Google Drive do dono, via API do Drive |
+| Login | Cloudflare Access | Login próprio com senha, segredo do Worker e cookie seguro |
+| Endereço | Domínio próprio | `amnesia.<conta>.workers.dev`, gratuito |
+
+A API do Drive não exige conta de cobrança; o armazenamento sai da assinatura Google
+do dono. As fotos continuam atrás de um adaptador (hoje o R2 local), então trocar o
+destino não afeta o resto do app. Se o Drive se mostrar inviável, a alternativa é
+guardar a foto como BLOB no próprio D1 (limite de 2 MB por registro e 500 MB por
+banco no plano gratuito). O login usará apenas a stdlib (`hashlib`, `hmac`,
+`secrets`), com compatibilidade conferida no runtime antes do uso.
 
 ## Próximos incrementos
 
-5. Deploy, Access e teste de registro em menos de 30 segundos no celular.
+5. Login próprio, fotos no Google Drive, publicação em `workers.dev` e teste de
+   registro em menos de 30 segundos no celular.
 
 Um incremento por vez. Nenhuma integração com IA nesta fase.
