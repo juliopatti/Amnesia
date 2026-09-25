@@ -1,6 +1,7 @@
 """Casos de uso independentes de HTTP; armazenamento injetado nos testes."""
 
-from dominio import horario_local, preparar_item, preparar_experiencia, validar_chave, validar_foto
+from dominio import (horario_local, preparar_busca, preparar_item, preparar_experiencia,
+                     validar_chave, validar_foto)
 
 
 async def verificar_base(armazenamento, instante):
@@ -8,6 +9,15 @@ async def verificar_base(armazenamento, instante):
     contagens = await armazenamento.contar_registros()
     return {"estado": "ok", "verificado_em": horario_local(instante),
             "categorias": categorias, **contagens}
+
+
+async def buscar(armazenamento, criterios, pagina=1, por_pagina=20):
+    """Sem palavras pesquisáveis (só símbolos), não lista tudo como se a busca estivesse vazia."""
+    busca = preparar_busca(**criterios)
+    if busca["texto"] and not busca["expressao"]:
+        return {"busca": busca, "itens": [], "tem_mais": False}
+    itens = await armazenamento.buscar_itens(busca, pagina, por_pagina)
+    return {"busca": busca, "itens": itens[:por_pagina], "tem_mais": len(itens) > por_pagina}
 
 
 async def criar_item(armazenamento, dados, chave, instante):

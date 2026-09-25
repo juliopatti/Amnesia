@@ -13,6 +13,10 @@ CAMPOS_CATEGORIA = {
 }
 MAX_FOTO_BYTES = 768 * 1024
 MAX_FOTOS = 3
+MAX_BUSCA = 200
+MAX_TERMOS = 10
+# Letras e dígitos, incluindo acentos combinantes (texto em NFD); "_" separa palavras.
+TERMO = re.compile(r"(?:[^\W_]|[\u0300-\u036f])+")
 
 
 def texto_limpo(valor, campo, limite=10000):
@@ -108,6 +112,30 @@ def preparar_experiencia(
         "repetiria": None if repetiria is None else int(repetiria),
         "tags": tags_limpas,
     }
+
+
+def expressao_busca(texto):
+    """Converte texto livre em consulta FTS5 segura: cada palavra vira prefixo entre aspas.
+
+    Aspas, operadores (AND, OR, NOT, NEAR), parênteses e asteriscos digitados são
+    tratados como texto. Acentos e maiúsculas ficam a cargo do tokenizador da FTS.
+    Retorna None quando não sobra nenhuma palavra pesquisável.
+    """
+    termos = TERMO.findall(texto)
+    if len(termos) > MAX_TERMOS:
+        raise ValueError(f"Use até {MAX_TERMOS} palavras na busca.")
+    return " ".join(f'"{termo}"*' for termo in termos) or None
+
+
+def preparar_busca(texto="", categoria="", nota_min="", nota_max=""):
+    texto = texto_limpo(texto, "Busca", MAX_BUSCA)
+    if categoria and categoria not in CAMPOS_CATEGORIA:
+        raise ValueError("Categoria desconhecida.")
+    nota_min, nota_max = normalizar_nota(nota_min), normalizar_nota(nota_max)
+    if nota_min is not None and nota_max is not None and nota_min > nota_max:
+        raise ValueError("A nota mínima ficou maior que a máxima. Inverta as duas.")
+    return {"texto": texto, "expressao": expressao_busca(texto), "categoria": categoria,
+            "nota_min": nota_min, "nota_max": nota_max}
 
 
 def validar_chave(chave):

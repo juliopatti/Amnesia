@@ -30,11 +30,33 @@ class ArmazenamentoD1:
         """)
         return linhas[0]
 
-    async def listar_itens(self, categoria="", pagina=1):
-        return await self.consultar("""
-            SELECT id, nome, categoria, descricao FROM itens
-            WHERE (? = '' OR categoria = ?) ORDER BY id DESC LIMIT 21 OFFSET ?
-        """, (categoria, categoria, (pagina - 1) * 20))
+    async def buscar_itens(self, busca, pagina=1, por_pagina=20):
+        """Um resultado por item: a FTS tem um documento por item e a média é agregada antes.
+
+        Busca o que for pedido e ainda uma linha a mais, para saber se há próxima página.
+        """
+        # Só fragmentos SQL fixos são interpolados; a expressão e os filtros usam parâmetros.
+        if busca["expressao"]:
+            origem = "busca_itens b JOIN itens i ON i.id = b.rowid"
+            # char(2)/char(3) delimitam o trecho encontrado; a página escapa e troca por <mark>.
+            trecho = "snippet(busca_itens, -1, char(2), char(3), '…', 12)"
+            condicao, ordem = "busca_itens MATCH ? AND", "bm25(busca_itens, 8, 3, 3, 1, 3, 3, 4), i.id DESC"
+            parametros = (busca["expressao"],)
+        else:
+            origem, trecho, condicao, ordem, parametros = "itens i", "''", "", "i.id DESC", ()
+        return await self.consultar(f"""
+            SELECT i.id, i.nome, i.categoria, i.descricao, {trecho} AS trecho,
+                   m.media, coalesce(m.avaliacoes, 0) AS avaliacoes,
+                   coalesce(m.experiencias, 0) AS experiencias
+            FROM {origem}
+            LEFT JOIN (SELECT item_id, avg(nota) AS media, count(nota) AS avaliacoes,
+                              count(*) AS experiencias
+                       FROM experiencias GROUP BY item_id) m ON m.item_id = i.id
+            WHERE {condicao} (? = '' OR i.categoria = ?)
+              AND (? IS NULL OR m.media >= ?) AND (? IS NULL OR m.media <= ?)
+            ORDER BY {ordem} LIMIT ? OFFSET ?
+        """, (*parametros, busca["categoria"], busca["categoria"], busca["nota_min"], busca["nota_min"],
+              busca["nota_max"], busca["nota_max"], por_pagina + 1, (pagina - 1) * por_pagina))
 
     async def obter_item(self, item_id):
         linhas = await self.consultar("SELECT * FROM itens WHERE id = ?", (item_id,))

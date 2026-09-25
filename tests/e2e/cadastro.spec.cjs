@@ -65,7 +65,7 @@ test('produto, campos extras, validação preserva texto e filtro htmx', async (
   await expect(page).toHaveURL(/\/experiencias\/\d+$/);
   await page.goto('/');
   const resposta = page.waitForRequest(req => req.url().includes('categoria=produto') && req.headers()['hx-request'] === 'true');
-  await page.getByRole('link', { name: 'Produtos', exact: true }).click();
+  await page.getByText('Produtos', { exact: true }).click();
   await resposta;
   await expect(page.locator('.itens')).toContainText(nome);
   await expect(page.locator('.itens')).toContainText('Torra escura.');
@@ -131,13 +131,72 @@ test('POST externo é bloqueado e reenvio concorrente é idempotente', async ({ 
   expect(invalida.status()).toBe(400);
 });
 
+test('busca no topo encontra relato, ignora acento, filtra e trata entradas especiais', async ({ page }) => {
+  const marcador = randomUUID().slice(0, 8).replace(/^\d/, 'b');
+  const nome = `Bar da busca ${marcador}`;
+  await page.goto('/registrar');
+  await page.getByLabel('Nome', { exact: true }).fill(nome);
+  await page.locator('label[for="nota-4"]').click();
+  await page.getByLabel('Como foi?').fill('Coxinha crocante. Açaí nem tanto.');
+  await page.getByRole('button', { name: 'Guardar experiência', exact: true }).click();
+  await expect(page).toHaveURL(/\/experiencias\/\d+$/);
+  await page.getByRole('link', { name: 'Outra experiência aqui' }).click();
+  await page.getByLabel('Como foi?').fill('Voltei pela coxinha.');
+  await page.getByRole('button', { name: 'Guardar experiência', exact: true }).click();
+  await expect(page).toHaveURL(/\/experiencias\/\d+$/);
+
+  // Busca digitada em outra página leva à inicial.
+  await page.getByLabel('Buscar nas lembranças').fill(`COXINHA ${marcador}`);
+  await page.getByLabel('Buscar nas lembranças').press('Enter');
+  await expect(page).toHaveURL(/\/\?q=COXINHA/);
+  await expect(page.locator('.item')).toHaveCount(1);
+  await expect(page.locator('.item mark').first()).toHaveText(/coxinha/i);
+  await expect(page.locator('.item')).toContainText('Média 4 · 2 experiências');
+
+  const campo = page.getByLabel('Buscar nas lembranças');
+  const htmx = () => page.waitForResponse(r => r.url().includes('/?') && r.request().headers()['hx-request'] === 'true');
+  let resposta = htmx();
+  await campo.fill(`acai ${marcador}`);
+  await resposta;
+  await expect(page.locator('.item')).toHaveCount(1);
+  await expect(page.locator('.item')).toContainText(nome);
+  await expect(page.getByRole('status')).toHaveText('1 item encontrado');
+
+  resposta = htmx();
+  await page.getByLabel('Média de').selectOption('4.5');
+  await resposta;
+  await expect(page.locator('.vazio')).toContainText('Nenhuma lembrança com');
+  await expect(page).toHaveURL(/nota_min=4\.5/);
+
+  resposta = htmx();
+  await page.getByLabel('até', { exact: true }).selectOption('1');
+  expect((await resposta).status()).toBe(422);
+  await expect(page.getByRole('alert')).toContainText('mínima ficou maior');
+  await expect(campo).toHaveValue(`acai ${marcador}`);
+
+  await page.goto('/?q=%22*()%20%F0%9F%8D%97');
+  await expect(page.locator('.vazio')).toContainText('Só sobrou pontuação');
+  for (const especial of ['"NOT (coxinha', "' OR 1=1 --", 'NEAR/2 *']) {
+    const pagina = await page.request.get(`/?q=${encodeURIComponent(especial)}`);
+    expect(pagina.status()).toBe(200);
+  }
+  await page.goto(`/?q=coxinha+${marcador}&categoria=produto`);
+  await expect(page.locator('.vazio')).toContainText('Nenhuma lembrança');
+  await page.getByRole('link', { name: 'Limpar busca' }).click();
+  await expect(page.getByRole('heading', { name: /Foi bom\?/ })).toBeVisible();
+});
+
 test('layout mobile sem rolagem horizontal e controles rotulados', async ({ page }) => {
   await page.setViewportSize({ width: 360, height: 800 });
+  for (const [caminho, titulo] of [['/registrar', 'Guardar uma experiência'], ['/?q=coxinha&nota_min=0', 'Resultados']]) {
+    await page.goto(caminho);
+    await expect(page.getByRole('heading', { name: titulo })).toBeVisible();
+    const tamanho = await page.evaluate(() => ({ largura: document.documentElement.scrollWidth, janela: innerWidth }));
+    expect(tamanho.largura).toBeLessThanOrEqual(tamanho.janela);
+    const semRotulo = await page.locator('input:not([type=hidden]), select, textarea').evaluateAll(campos => campos.filter(c => !c.labels?.length).map(c => c.id));
+    expect(semRotulo).toEqual([]);
+  }
+  await page.screenshot({ path: 'test-results/busca-mobile.png', fullPage: true });
   await page.goto('/registrar');
-  await expect(page.getByRole('heading', { name: 'Guardar uma experiência' })).toBeVisible();
-  const tamanho = await page.evaluate(() => ({ largura: document.documentElement.scrollWidth, janela: innerWidth }));
-  expect(tamanho.largura).toBeLessThanOrEqual(tamanho.janela);
-  const semRotulo = await page.locator('input:not([type=hidden]), select, textarea').evaluateAll(campos => campos.filter(c => !c.labels?.length).map(c => c.id));
-  expect(semRotulo).toEqual([]);
   await page.screenshot({ path: 'test-results/cadastro-mobile.png', fullPage: true });
 });

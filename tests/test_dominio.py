@@ -1,7 +1,8 @@
 from datetime import datetime, timezone
 import unittest
 
-from dominio import horario_local, normalizar_nota, preparar_experiencia, preparar_item
+from dominio import (expressao_busca, horario_local, normalizar_nota, preparar_busca,
+                     preparar_experiencia, preparar_item)
 
 
 class TestDominio(unittest.TestCase):
@@ -66,6 +67,34 @@ class TestDominio(unittest.TestCase):
                         {"preco_centavos": True}, {"repetiria": "sim"}, {"tags": "bar"}):
             with self.subTest(valores=valores), self.assertRaises(ValueError):
                 preparar_experiencia(1, hoje="2026-09-24", **valores)
+
+    def test_expressao_busca_neutraliza_sintaxe_fts(self):
+        casos = {
+            "Coxinha": '"Coxinha"*',
+            '  açaí "do" Zé  ': '"açaí"* "do"* "Zé"*',
+            "NOT bar OR (cox*) -pastel NEAR/2 x:y": '"NOT"* "bar"* "OR"* "cox"* "pastel"* "NEAR"* "2"* "x"* "y"*',
+            "happy-hour_12,50": '"happy"* "hour"* "12"* "50"*',
+            "cafe\u0301": '"cafe\u0301"*',  # "é" decomposto (NFD)
+        }
+        for texto, esperado in casos.items():
+            with self.subTest(texto=texto):
+                self.assertEqual(expressao_busca(texto), esperado)
+        for vazio in ("", "   ", '"*()', "🍗 !!!", "\x00\x02"):
+            self.assertIsNone(expressao_busca(vazio))
+        with self.assertRaises(ValueError):
+            expressao_busca("a " * 11)
+
+    def test_preparar_busca_valida_filtros(self):
+        busca = preparar_busca(" coxinha ", "lugar", "0", "3,5")
+        self.assertEqual((busca["texto"], busca["categoria"], busca["nota_min"], busca["nota_max"]),
+                         ("coxinha", "lugar", 0, 3.5))
+        vazia = preparar_busca()
+        self.assertEqual((vazia["expressao"], vazia["nota_min"], vazia["nota_max"]), (None, None, None))
+        for argumentos in ({"categoria": "filme"}, {"nota_min": "2.3"}, {"nota_max": "6"},
+                           {"nota_min": "4", "nota_max": "3"}, {"texto": "x" * 201}):
+            with self.subTest(argumentos=argumentos), self.assertRaises(ValueError):
+                preparar_busca(**argumentos)
+        self.assertEqual(preparar_busca(nota_min="3", nota_max="3")["nota_max"], 3)
 
     def test_offset_fixo_na_virada_do_dia(self):
         instante = datetime(2026, 9, 25, 1, 30, tzinfo=timezone.utc)

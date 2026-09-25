@@ -1,54 +1,138 @@
 """Páginas e formulários HTML; nenhum valor do usuário é inserido sem escape."""
 
 from html import escape
+import re
+from urllib.parse import urlencode
+
+BUSCA_VAZIA = {"texto": "", "categoria": "", "nota_min": None, "nota_max": None}
+# 422 traz a página com a mensagem de erro da busca; o htmx precisa trocá-la mesmo assim.
+HTMX_CONFIG = ('{"allowEval":false,"includeIndicatorStyles":false,"responseHandling":['
+               '{"code":"204","swap":false},{"code":"[23]..","swap":true},'
+               '{"code":"422","swap":true},{"code":"[45]..","swap":false,"error":true}]}')
 
 
-def estrutura(conteudo, titulo="Seu caderno"):
+def estrutura(conteudo, titulo="Seu caderno", filtros=""):
     return f"""<!doctype html>
 <html lang="pt-BR"><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="htmx-config" content='{{"allowEval":false,"includeIndicatorStyles":false}}'>
+<meta name="htmx-config" content='{HTMX_CONFIG}'>
 <title>{escape(titulo)} · amnesia</title>
 <link rel="stylesheet" href="/estilo.css">
 <script src="/htmx.min.js" defer></script><script src="/fotos.js" defer></script>
 </head><body>
 <a class="pular" href="#conteudo">Pular para o conteúdo</a>
-<header><a class="logo" href="/">amnesia<span aria-hidden="true">.</span></a>
-<span class="selo">só para você</span></header>
+<header><div class="topo"><a class="logo" href="/">amnesia<span aria-hidden="true">.</span></a>
+<span class="selo">só para você</span></div>{filtros or formulario_busca()}</header>
 <main id="conteudo">{conteudo}</main>
 <footer>Uma memória externa. Sem plateia.</footer>
 </body></html>"""
 
 
-def pagina_inicial(categorias, itens=(), categoria="", pagina=1):
-    filtros = [("", "Tudo")] + [(c["slug"], c["nome"]) for c in categorias]
-    navegacao = "".join(
-        f'<a class="filtro {"ativo" if slug == categoria else ""}" href="/?categoria={escape(slug)}" '
-        f'hx-get="/?categoria={escape(slug)}" hx-target="#conteudo" hx-select="#conteudo" '
-        f'hx-swap="outerHTML" hx-push-url="true" '
-        f'{"aria-current=page" if slug == categoria else ""}>{escape(nome)}</a>'
-        for slug, nome in filtros)
-    cartoes = "".join(f"""<li class="item">
-        <div><span class="categoria">{'Lugar' if i['categoria'] == 'lugar' else 'Produto'}</span>
-        <h2>{escape(i['nome'])}</h2>
-        <p class="descricao">{escape(i['descricao'][:180])}</p></div>
-        <a class="botao secundario" href="/registrar?item_id={i['id']}"
-           aria-label="Registrar experiência em {escape(i['nome'])}">Registrar <span aria-hidden="true">↗</span></a>
-        </li>""" for i in itens[:20])
-    if not cartoes:
+def nota_texto(nota):
+    return f"{nota:g}".replace(".", ",")
+
+
+def formulario_busca(busca=None, categorias=()):
+    """Nas outras páginas, só o campo; na inicial, filtros e atualização via htmx."""
+    completo = busca is not None
+    busca = busca or BUSCA_VAZIA
+    campo_busca = f"""<label class="sr-only" for="q">Buscar nas lembranças</label>
+        <div class="campo-busca"><input id="q" name="q" type="search" value="{escape(busca['texto'])}"
+        maxlength="200" autocomplete="off" enterkeyhint="search"
+        placeholder="Coxinha, bairro, aquele café…"><button class="botao principal" type="submit">Buscar</button></div>"""
+    if not completo:
+        return f'<form class="busca" action="/" method="get" role="search">{campo_busca}</form>'
+    chips = ""
+    for slug, nome in [("", "Tudo")] + [(c["slug"], c["nome"]) for c in categorias]:
+        marcado = "checked" if slug == busca["categoria"] else ""
+        chips += (f'<input class="radio-visual" type="radio" name="categoria" id="categoria-{escape(slug) or "todas"}" '
+                  f'value="{escape(slug)}" {marcado}><label class="filtro" for="categoria-{escape(slug) or "todas"}">{escape(nome)}</label>')
+    faixa = ""
+    for nome, rotulo in (("nota_min", "Média de"), ("nota_max", "até")):
+        opcoes = '<option value="">qualquer</option>'
+        for meia in range(11):
+            valor = meia / 2
+            opcoes += f'<option value="{valor:g}" {"selected" if busca[nome] == valor else ""}>{nota_texto(valor)}</option>'
+        faixa += f'<label for="{nome}">{rotulo}</label><select id="{nome}" name="{nome}">{opcoes}</select>'
+    return f"""<form id="busca" class="busca" action="/" method="get" role="search"
+        hx-get="/" hx-trigger="submit, input changed delay:300ms from:#q, change from:#filtros-busca"
+        hx-target="#conteudo" hx-select="#conteudo" hx-swap="outerHTML" hx-push-url="true" hx-sync="this:replace">
+        {campo_busca}<div id="filtros-busca">
+        <fieldset class="filtros"><legend class="sr-only">Categoria</legend>{chips}</fieldset>
+        <div class="faixa" role="group" aria-label="Faixa de nota média">{faixa}</div></div></form>"""
+
+
+def url_busca(busca, pagina=1):
+    parametros = {"q": busca["texto"], "categoria": busca["categoria"],
+                  "nota_min": "" if busca["nota_min"] is None else f"{busca['nota_min']:g}",
+                  "nota_max": "" if busca["nota_max"] is None else f"{busca['nota_max']:g}",
+                  "pagina": "" if pagina == 1 else pagina}
+    consulta = urlencode({chave: valor for chave, valor in parametros.items() if valor != ""})
+    return "/?" + consulta if consulta else "/"
+
+
+def destacar(trecho):
+    """Escapa o trecho da FTS e só então converte os marcadores pareados em <mark>."""
+    seguro = re.sub("\x02([^\x02\x03]*)\x03", r"<mark>\1</mark>", escape(trecho))
+    return seguro.replace("\x02", "").replace("\x03", "")
+
+
+def cartao(item):
+    trecho = item.get("trecho") or ""
+    # Se o trecho é o próprio nome, a descrição informa mais.
+    if trecho and trecho.replace("\x02", "").replace("\x03", "") != item["nome"]:
+        resumo = f'<p class="trecho">{destacar(trecho)}</p>'
+    else:
+        resumo = f'<p class="descricao">{escape(item["descricao"][:180])}</p>'
+    total = item.get("experiencias", 0)
+    if not total:
+        meta = "Nenhuma experiência ainda"
+    else:
+        media = "Sem nota" if item.get("media") is None else f"Média {nota_texto(round(item['media'], 2))}"
+        meta = f"{media} · {total} experiência{'s' if total > 1 else ''}"
+    return f"""<li class="item">
+        <div><span class="categoria">{'Lugar' if item['categoria'] == 'lugar' else 'Produto'}</span>
+        <h2>{escape(item['nome'])}</h2>{resumo}<p class="meta">{meta}</p></div>
+        <a class="botao secundario" href="/registrar?item_id={item['id']}"
+           aria-label="Registrar experiência em {escape(item['nome'])}">Registrar <span aria-hidden="true">↗</span></a>
+        </li>"""
+
+
+def pagina_inicial(categorias, resultado=None, pagina=1, erro=""):
+    resultado = resultado or {"busca": dict(BUSCA_VAZIA), "itens": [], "tem_mais": False}
+    busca, itens = resultado["busca"], resultado["itens"]
+    filtrando = bool(erro) or any((busca["texto"], busca["categoria"],
+                                   busca["nota_min"] is not None, busca["nota_max"] is not None))
+    cartoes = "".join(cartao(item) for item in itens)
+    limpar = '<a class="botao secundario" href="/">Limpar busca</a>'
+    if erro:
+        cartoes = ""
+    elif not cartoes and busca["texto"] and not busca.get("expressao"):
+        cartoes = f'<li class="vazio"><span aria-hidden="true">?</span><h2>Só sobrou pontuação.</h2><p>Tente uma palavra. “Coxinha” costuma funcionar.</p>{limpar}</li>'
+    elif not cartoes and filtrando:
+        termo = f" com “{escape(busca['texto'])}”" if busca["texto"] else " com esses filtros"
+        cartoes = f'<li class="vazio"><span aria-hidden="true">∅</span><h2>Nenhuma lembrança{termo}.</h2><p>Talvez tenha outro nome. Talvez tenha sido um sonho.</p>{limpar}</li>'
+    elif not cartoes:
         cartoes = '<li class="vazio"><span aria-hidden="true">↳</span><h2>A memória começa aqui.</h2><p>Ou você nunca foi, ou esqueceu de anotar também.</p></li>'
     paginacao = ""
     if pagina > 1:
-        paginacao += f'<a href="/?categoria={escape(categoria)}&amp;pagina={pagina-1}">← Anteriores</a>'
-    if len(itens) > 20:
-        paginacao += f'<a href="/?categoria={escape(categoria)}&amp;pagina={pagina+1}">Próximos →</a>'
-    return estrutura(f"""<section class="abertura"><p class="sobretitulo">SEU CADERNO DE EXPERIÊNCIAS</p>
+        paginacao += f'<a href="{escape(url_busca(busca, pagina - 1))}">← Anteriores</a>'
+    if resultado["tem_mais"]:
+        paginacao += f'<a href="{escape(url_busca(busca, pagina + 1))}">Próximos →</a>'
+    if filtrando:
+        quantidade = len(itens) + (pagina - 1) * 20
+        contagem = "Nada encontrado" if not itens else f"{quantidade}{'+' if resultado['tem_mais'] else ''} {'item encontrado' if quantidade == 1 else 'itens encontrados'}"
+        topo = f'<div class="resultados"><h1 class="titulo-busca">Resultados</h1><p class="muted" role="status">{contagem}</p></div>'
+    else:
+        topo = """<section class="abertura"><p class="sobretitulo">SEU CADERNO DE EXPERIÊNCIAS</p>
         <h1>Foi bom?<br><span>Melhor anotar.</span></h1>
         <p>Você já esteve aqui. Óbvio que não lembra.</p>
         <a class="botao principal" href="/registrar">+ Registrar experiência</a></section>
-        <div class="titulo-lista"><h2>O que ficou na memória</h2></div>
-        <nav class="filtros" aria-label="Categorias">{navegacao}</nav>
-        <ul class="itens">{cartoes}</ul><nav class="paginacao" aria-label="Paginação">{paginacao}</nav>""")
+        <div class="titulo-lista"><h2>O que ficou na memória</h2></div>"""
+    aviso = f'<div class="aviso erro" role="alert">{escape(erro)}</div>' if erro else ""
+    return estrutura(f"""{topo}{aviso}<ul class="itens">{cartoes}</ul>
+        <nav class="paginacao" aria-label="Paginação">{paginacao}</nav>""",
+        "Busca" if filtrando else "Seu caderno", formulario_busca(busca, categorias))
 
 
 def campo(nome, rotulo, valores, tipo="text", atributos="", ajuda=""):

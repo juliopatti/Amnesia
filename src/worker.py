@@ -7,9 +7,9 @@ from uuid import uuid4
 from workers import Response, WorkerEntrypoint
 
 from armazenamento import ArmazenamentoD1, ArmazenamentoR2
-from dominio import CAMPOS_CATEGORIA, MAX_FOTO_BYTES, horario_local, preco_em_centavos
+from dominio import CAMPOS_CATEGORIA, MAX_BUSCA, MAX_FOTO_BYTES, horario_local, preco_em_centavos
 from paginas import pagina_inicial, formulario, confirmacao, item_guardado
-from servicos import verificar_base, criar_item, registrar_experiencia, anexar_foto
+from servicos import verificar_base, buscar, criar_item, registrar_experiencia, anexar_foto
 
 
 CABECALHOS = {
@@ -76,6 +76,19 @@ def dados_item(valores):
 
 
 class Default(WorkerEntrypoint):
+    async def pagina_busca(self, banco, consulta):
+        criterios = {campo: consulta.get(parametro, [""])[0] for campo, parametro in
+                     (("texto", "q"), ("categoria", "categoria"), ("nota_min", "nota_min"), ("nota_max", "nota_max"))}
+        categorias = await banco.listar_categorias()
+        try:
+            pagina = identificador(consulta.get("pagina", ["1"])[0])
+            return html(pagina_inicial(categorias, await buscar(banco, criterios, pagina), pagina))
+        except ValueError as erro:
+            # Mantém o texto digitado no campo; filtros inválidos voltam ao padrão.
+            eco = {"busca": {"texto": criterios["texto"][:MAX_BUSCA], "categoria": "",
+                             "nota_min": None, "nota_max": None}, "itens": [], "tem_mais": False}
+            return html(pagina_inicial(categorias, eco, erro=str(erro)), 422)
+
     async def fetch(self, request):
         url = urlsplit(request.url)
         caminho = url.path
@@ -93,12 +106,7 @@ class Default(WorkerEntrypoint):
                 if caminho == "/saude":
                     return resposta_json(await verificar_base(banco, instante))
                 if caminho == "/":
-                    categoria = consulta.get("categoria", [""])[0]
-                    if categoria and categoria not in CAMPOS_CATEGORIA:
-                        raise ValueError("Categoria desconhecida.")
-                    pagina = identificador(consulta.get("pagina", ["1"])[0])
-                    itens = await banco.listar_itens(categoria, pagina)
-                    return html(pagina_inicial(await banco.listar_categorias(), itens, categoria, pagina))
+                    return await self.pagina_busca(banco, consulta)
                 if caminho == "/registrar":
                     item = None
                     if consulta.get("item_id"):
