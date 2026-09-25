@@ -32,7 +32,7 @@ testes. Nesta fase, os commits vão direto para `main`.
   vez, mesmo com várias experiências que mencionem o termo; o trecho encontrado fica
   destacado.
 - Filtrar por categoria e por faixa de **nota média do item** (0 a 5, meia em meia).
-- Cada aba de categoria tem seu **+ Registrar experiência**, que já abre o formulário
+- Cada aba de categoria tem seu botão **+ Registrar**, que já abre o formulário
   naquela categoria.
 - **Editar** o item (nome, categoria, descrição e detalhes) e cada experiência
   (nota, relato, data, pedido, preço, tags e “voltaria?”). A busca acompanha.

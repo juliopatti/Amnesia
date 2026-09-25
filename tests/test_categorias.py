@@ -94,11 +94,11 @@ class TestFormularioCategorias(unittest.TestCase):
                               "nota_min": None, "nota_max": None}, "itens": [], "tem_mais": False}
         aba = pagina_inicial(resultado(categoria="filme"))
         self.assertIn('<h1 class="titulo-busca">Filmes</h1>', aba)
-        self.assertIn('href="/registrar?categoria=filme">+ Registrar experiência', aba)
+        self.assertIn('href="/registrar?categoria=filme" aria-label="Registrar experiência">', aba)
         busca = pagina_inicial(resultado("cleo", "filme"))
         self.assertIn('<h1 class="titulo-busca">Resultados</h1>', busca)
         self.assertIn('href="/registrar?categoria=filme"', busca)
-        self.assertIn('href="/registrar">+ Registrar experiência', pagina_inicial(resultado("cleo")))
+        self.assertIn('href="/registrar" aria-label="Registrar experiência">', pagina_inicial(resultado("cleo")))
 
     def test_formulario_abre_na_categoria_e_preserva_subcategoria(self):
         self.assertIn('value="livro" data-exemplo', formulario("2026-09-24", "a" * 32, valores={"categoria": "livro"}))

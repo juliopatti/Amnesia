@@ -112,9 +112,10 @@ form.busca { margin: 14px 0 2px; }
 .faixa { display: grid; grid-template-columns: auto 1fr auto 1fr; align-items: center; gap: 8px; margin-top: 10px; max-width: 420px; }
 .faixa label { margin: 0; font-weight: 450; font-size: .88rem; color: var(--suave); }
 .faixa select { min-width: 0; min-height: 44px; padding: 8px 32px 8px 12px; background-position: right 12px center; font-size: .92rem; }
-.resultados { margin: 4px 0 8px; }
-.titulo-com-acao { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 16px; margin-bottom: 10px; }
-.titulo-com-acao .botao { min-height: 44px; padding: 10px 16px; font-size: .92rem; }
+.resultados { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 4px 0 8px; }
+.resultados > div { min-width: 0; }
+.resultados p { margin: 0; }
+.registrar-aba { flex-shrink: 0; min-height: 44px; padding: 8px 14px; gap: 6px; font-size: .92rem; }
 .titulo-busca { font-size: 1.7rem; margin: 0 0 2px; }
 mark { background: #f3e2a9; color: inherit; border-radius: 3px; padding: 0 2px; }
 

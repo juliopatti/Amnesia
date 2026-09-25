@@ -137,9 +137,10 @@ def pagina_inicial(resultado=None, pagina=1, erro=""):
         so_categoria = busca["categoria"] and not busca["texto"] and not erro
         titulo = definicao_categoria(busca["categoria"])["nome"] if so_categoria else "Resultados"
         registrar = f"/registrar?{urlencode({'categoria': busca['categoria']})}" if busca["categoria"] and not erro else "/registrar"
-        topo = (f'<div class="resultados"><div class="titulo-com-acao"><h1 class="titulo-busca">{escape(titulo)}</h1>'
-                f'<a class="botao principal" href="{escape(registrar)}">+ Registrar experiência</a></div>'
-                f'<p class="muted" role="status">{contagem}</p></div>')
+        topo = (f'<div class="resultados"><div><h1 class="titulo-busca">{escape(titulo)}</h1>'
+                f'<p class="muted" role="status">{contagem}</p></div>'
+                f'<a class="botao secundario registrar-aba" href="{escape(registrar)}" aria-label="Registrar experiência">'
+                f'<span aria-hidden="true">+</span> Registrar</a></div>')
     else:
         topo = """<section class="abertura"><p class="sobretitulo">SEU CADERNO DE EXPERIÊNCIAS</p>
         <h1>Foi bom? <span>Melhor anotar.</span></h1>
