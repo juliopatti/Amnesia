@@ -44,7 +44,7 @@ class TestEdicao(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(await self.ids('centro'), [])
 
     async def test_edicao_invalida_ou_inexistente_nao_altera(self):
-        for dados in ({'nome': ' '}, {'nome': 'X', 'categoria': 'filme'}):
+        for dados in ({'nome': ' '}, {'nome': 'X', 'categoria': 'inexistente'}):
             with self.subTest(dados=dados), self.assertRaises(ValueError):
                 await editar_item(self.banco, self.item_id, dados)
         with self.assertRaises(LookupError):

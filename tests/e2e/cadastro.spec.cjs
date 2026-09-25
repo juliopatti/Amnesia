@@ -54,7 +54,7 @@ test('produto, campos extras, validação preserva texto e filtro htmx', async (
   await page.getByLabel('Nome', { exact: true }).fill(nome);
   await page.getByLabel('Como foi?').fill('Amargo na medida.');
   await page.getByText('Mais detalhes', { exact: false }).click();
-  await page.getByLabel('Sobre o lugar ou produto').fill('Torra escura.');
+  await page.getByLabel('Descrição').fill('Torra escura.');
   await page.getByLabel('Marca', { exact: true }).fill('Marca fictícia');
   await page.getByLabel('Quanto paguei (R$)').fill('12,345');
   await page.getByRole('button', { name: 'Guardar experiência', exact: true }).click();
@@ -123,7 +123,7 @@ test('foto reduzida, falha de upload preserva registro e permite repetir', async
   expect(foto.headers()['x-content-type-options']).toBe('nosniff');
   const endereco = await imagem.getAttribute('src');
   const experiencia = page.url();
-  await page.getByRole('link', { name: '← Voltar ao lugar' }).click();
+  await page.getByRole('link', { name: '← Todas as experiências' }).click();
   await expect(page.locator('.experiencias .miniatura')).toHaveAttribute('src', endereco);
   await page.goto(experiencia);
   await page.getByRole('link', { name: 'Remover foto 1' }).click();
@@ -242,17 +242,17 @@ test('edita item e experiência, reflete na busca e exclui com confirmação', a
   await expect(page.locator('.resumo')).toContainText('4,5 / 5');
   await expect(page.locator('.resumo')).toContainText('Espetinho no ponto.');
 
-  await page.getByRole('link', { name: '← Voltar ao lugar' }).click();
+  await page.getByRole('link', { name: '← Todas as experiências' }).click();
   await page.getByRole('link', { name: 'Editar item' }).click();
   await expect(page.getByLabel('Nome', { exact: true })).toHaveValue(`Bar erado ${marcador}`);
   await page.getByLabel('O que é?').selectOption('produto');
-  await page.getByLabel('Link').fill('javascript:alert(1)');
+  await page.locator('#produto-link').fill('javascript:alert(1)');
   await page.getByRole('button', { name: 'Guardar alterações' }).click();
   await expect(page.getByRole('alert')).toContainText('http://');
-  await page.getByLabel('O que é?').selectOption('lugar');
+  await page.getByLabel('O que é?').selectOption('restaurante');
   await page.getByLabel('Nome', { exact: true }).fill(`Bar certo ${marcador}`);
-  await page.getByLabel('Bairro').fill('Lapa');
-  await page.getByLabel('Telefone / WhatsApp').fill('(11) 98765-4321');
+  await page.locator('#restaurante-bairro').fill('Lapa');
+  await page.locator('#restaurante-telefone').fill('(11) 98765-4321');
   await page.getByRole('button', { name: 'Guardar alterações' }).click();
   await expect(page.getByRole('heading', { level: 1 })).toHaveText(`Bar certo ${marcador}`);
   await expect(page.getByRole('link', { name: 'WhatsApp' })).toHaveAttribute('href', 'https://wa.me/5511987654321');
@@ -279,6 +279,27 @@ test('edita item e experiência, reflete na busca e exclui com confirmação', a
   expect((await page.request.get(experiencia)).status()).toBe(404);
   await page.goto(`/?q=espetinho+${marcador}`);
   await expect(page.locator('.item')).toHaveCount(0);
+});
+
+test('categorias novas: filme com detalhes próprios e filtro por categoria', async ({ page }) => {
+  const nome = nomeUnico('Filme de teste');
+  await page.goto('/registrar');
+  await page.getByLabel('O que é?').selectOption('filme');
+  await page.getByLabel('Nome', { exact: true }).fill(nome);
+  await page.getByText('Mais detalhes', { exact: false }).click();
+  await expect(page.locator('#filme-direcao')).toBeVisible();
+  await expect(page.locator('#restaurante-bairro')).toBeHidden();
+  await page.locator('#filme-direcao').fill('Diretora Fictícia');
+  await page.locator('#filme-ano').fill('1962');
+  await page.getByRole('button', { name: 'Só guardar o item, sem experiência' }).click();
+  await expect(page.getByText('Direção: Diretora Fictícia · Ano: 1962')).toBeVisible();
+  await expect(page.locator('.sobretitulo')).toHaveText('FILME');
+  await page.goto('/');
+  const resposta = page.waitForResponse(r => r.url().includes('categoria=filme') && r.request().headers()['hx-request'] === 'true');
+  await page.getByText('Filmes', { exact: true }).click();
+  await resposta;
+  await expect(page.locator('.itens')).toContainText(nome);
+  await expect(page.locator('.itens')).not.toContainText('Bar de teste');
 });
 
 test('layout mobile sem rolagem horizontal e controles rotulados', async ({ page }) => {

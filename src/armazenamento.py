@@ -33,6 +33,8 @@ class ArmazenamentoD1:
     async def buscar_itens(self, busca, pagina=1, por_pagina=20):
         """Um resultado por item: a FTS tem um documento por item e a média é agregada antes.
 
+        Filtrar por "musica" inclui subcategorias como "musica.rock" (prefixo com ponto).
+
         Busca o que for pedido e ainda uma linha a mais, para saber se há próxima página.
         """
         # Só fragmentos SQL fixos são interpolados; a expressão e os filtros usam parâmetros.
@@ -52,10 +54,10 @@ class ArmazenamentoD1:
             LEFT JOIN (SELECT item_id, avg(nota) AS media, count(nota) AS avaliacoes,
                               count(*) AS experiencias
                        FROM experiencias GROUP BY item_id) m ON m.item_id = i.id
-            WHERE {condicao} (? = '' OR i.categoria = ?)
+            WHERE {condicao} (? = '' OR i.categoria = ? OR substr(i.categoria, 1, length(?) + 1) = ? || '.')
               AND (? IS NULL OR m.media >= ?) AND (? IS NULL OR m.media <= ?)
             ORDER BY {ordem} LIMIT ? OFFSET ?
-        """, (*parametros, busca["categoria"], busca["categoria"], busca["nota_min"], busca["nota_min"],
+        """, (*parametros, *[busca["categoria"]] * 4, busca["nota_min"], busca["nota_min"],
               busca["nota_max"], busca["nota_max"], por_pagina + 1, (pagina - 1) * por_pagina))
 
     async def obter_item(self, item_id):

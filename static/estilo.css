@@ -104,7 +104,9 @@ form.busca { margin: 14px 0 2px; }
 .campo-busca { display: flex; gap: 8px; }
 .campo-busca input { flex: 1; min-width: 0; }
 .campo-busca .botao { padding-inline: 16px; }
-.filtros { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0 0; }
+/* Sete categorias não cabem numa linha do celular: a faixa rola na horizontal, a página não. */
+.filtros { display: flex; gap: 8px; margin: 12px -20px 0; padding: 0 20px 4px; overflow-x: auto; scrollbar-width: none; }
+.filtros .filtro { flex-shrink: 0; white-space: nowrap; }
 .filtros .filtro { position: relative; margin: 0; padding: 8px 16px; min-height: 44px; display: flex; align-items: center; border-radius: 99px; border: 1px solid var(--borda); background: var(--superficie); color: var(--verde); font-weight: 500; font-size: .92rem; cursor: pointer; }
 .filtro:has(> .radio-visual:checked) { color: white; background: var(--verde); border-color: var(--verde); }
 .faixa { display: grid; grid-template-columns: auto 1fr auto 1fr; align-items: center; gap: 8px; margin-top: 10px; max-width: 420px; }

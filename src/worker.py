@@ -8,7 +8,8 @@ from uuid import uuid4
 from workers import Response, WorkerEntrypoint
 
 from armazenamento import ArmazenamentoD1, ArmazenamentoR2
-from dominio import CAMPOS_CATEGORIA, MAX_BUSCA, MAX_FOTO_BYTES, horario_local, preco_em_centavos
+from dominio import (CATEGORIA_PADRAO, MAX_BUSCA, MAX_FOTO_BYTES, campos_da_categoria, categoria_raiz,
+                     horario_local, preco_em_centavos)
 from paginas import (pagina_inicial, formulario, confirmacao, pagina_item, formulario_item,
                      formulario_experiencia, confirmar_exclusao, valores_item, valores_experiencia)
 from servicos import (verificar_base, buscar, criar_item, registrar_experiencia, anexar_foto,
@@ -73,10 +74,12 @@ async def ler_corpo(request, limite):
 
 
 def dados_item(valores):
-    categoria = valores.get("categoria", "lugar")
+    categoria = valores.get("categoria", CATEGORIA_PADRAO)
+    # Cada categoria tem seus próprios campos no formulário ("lugar-bairro", "restaurante-bairro").
+    prefixo = categoria_raiz(categoria)
     return {"nome": valores.get("nome", ""), "categoria": categoria,
             "descricao": valores.get("descricao", ""),
-            "detalhes": {campo: valores.get(campo, "") for campo in CAMPOS_CATEGORIA.get(categoria, ())}}
+            "detalhes": {campo: valores.get(f"{prefixo}-{campo}", "") for campo in campos_da_categoria(categoria)}}
 
 
 def dados_experiencia(valores):
@@ -95,7 +98,7 @@ async def ler_formulario(request):
     if request.headers.get("Content-Type", "").split(";")[0] != "application/x-www-form-urlencoded":
         return None
     conteudo = (await ler_corpo(request, 64 * 1024)).decode("utf-8")
-    campos = parse_qs(conteudo, keep_blank_values=True, max_num_fields=40)
+    campos = parse_qs(conteudo, keep_blank_values=True, max_num_fields=80)
     if any(len(valores) != 1 for valores in campos.values()):
         raise ValueError("O formulário contém campos repetidos.")
     return {campo: valores[0] for campo, valores in campos.items()}
@@ -108,15 +111,14 @@ class Default(WorkerEntrypoint):
     async def pagina_busca(self, banco, consulta):
         criterios = {campo: consulta.get(parametro, [""])[0] for campo, parametro in
                      (("texto", "q"), ("categoria", "categoria"), ("nota_min", "nota_min"), ("nota_max", "nota_max"))}
-        categorias = await banco.listar_categorias()
         try:
             pagina = identificador(consulta.get("pagina", ["1"])[0])
-            return html(pagina_inicial(categorias, await buscar(banco, criterios, pagina), pagina))
+            return html(pagina_inicial(await buscar(banco, criterios, pagina), pagina))
         except ValueError as erro:
             # Mantém o texto digitado no campo; filtros inválidos voltam ao padrão.
             eco = {"busca": {"texto": criterios["texto"][:MAX_BUSCA], "categoria": "",
                              "nota_min": None, "nota_max": None}, "itens": [], "tem_mais": False}
-            return html(pagina_inicial(categorias, eco, erro=str(erro)), 422)
+            return html(pagina_inicial(eco, erro=str(erro)), 422)
 
     async def recurso(self, request, banco, instante, tipo, texto_id, acao):
         """Páginas, edição e exclusão de itens, experiências e fotos. None significa rota inexistente."""

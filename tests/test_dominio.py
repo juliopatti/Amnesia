@@ -28,7 +28,7 @@ class TestDominio(unittest.TestCase):
         item = preparar_item(" Bar da Esquina ", descricao=" Bom para conversar. ")
         self.assertEqual(item["nome"], "Bar da Esquina")
         self.assertEqual(item["descricao"], "Bom para conversar.")
-        self.assertEqual(item["categoria"], "lugar")
+        self.assertEqual(item["categoria"], "restaurante")
         self.assertEqual(item["detalhes"], {})
 
     def test_detalhes_nao_mutam_entrada(self):
@@ -38,7 +38,8 @@ class TestDominio(unittest.TestCase):
         self.assertEqual(detalhes["marca"], " Marca X ")
 
     def test_rejeita_item_invalido(self):
-        for argumentos in ({"nome": " "}, {"nome": "X", "categoria": "filme"},
+        for argumentos in ({"nome": " "}, {"nome": "X", "categoria": "inexistente"},
+                           {"nome": "X", "categoria": "musica..rock"}, {"nome": "X", "categoria": "Filme"},
                            {"nome": "X", "detalhes": []},
                            {"nome": "X", "detalhes": {"marca": "X"}}):
             with self.subTest(argumentos=argumentos), self.assertRaises(ValueError):
@@ -132,7 +133,7 @@ class TestDominio(unittest.TestCase):
                          ("coxinha", "lugar", 0, 3.5))
         vazia = preparar_busca()
         self.assertEqual((vazia["expressao"], vazia["nota_min"], vazia["nota_max"]), (None, None, None))
-        for argumentos in ({"categoria": "filme"}, {"nota_min": "2.3"}, {"nota_max": "6"},
+        for argumentos in ({"categoria": "inexistente"}, {"nota_min": "2.3"}, {"nota_max": "6"},
                            {"nota_min": "4", "nota_max": "3"}, {"texto": "x" * 201}):
             with self.subTest(argumentos=argumentos), self.assertRaises(ValueError):
                 preparar_busca(**argumentos)

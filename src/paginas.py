@@ -5,7 +5,8 @@ import json
 import re
 from urllib.parse import urlencode
 
-from dominio import MAX_FOTOS, VOLTARIA, centavos_em_texto, contato_telefone, resumo_notas, resumo_voltaria
+from dominio import (CATEGORIA_PADRAO, CATEGORIAS, MAX_FOTOS, VOLTARIA, categoria_raiz, centavos_em_texto,
+                     contato_telefone, resumo_notas, resumo_voltaria)
 
 BUSCA_VAZIA = {"texto": "", "categoria": "", "nota_min": None, "nota_max": None}
 # 422 traz a página com a mensagem de erro da busca; o htmx precisa trocá-la mesmo assim.
@@ -41,7 +42,7 @@ def nota_texto(nota):
     return f"{nota:g}".replace(".", ",")
 
 
-def formulario_busca(busca=None, categorias=()):
+def formulario_busca(busca=None):
     """Nas outras páginas, só o campo; na inicial, filtros e atualização via htmx."""
     completo = busca is not None
     busca = busca or BUSCA_VAZIA
@@ -52,7 +53,7 @@ def formulario_busca(busca=None, categorias=()):
     if not completo:
         return f'<form class="busca" action="/" method="get" role="search">{campo_busca}</form>'
     chips = ""
-    for slug, nome in [("", "Tudo")] + [(c["slug"], c["nome"]) for c in categorias]:
+    for slug, nome in [("", "Tudo")] + [(slug, c["nome"]) for slug, c in CATEGORIAS.items()]:
         chips += pilula("categoria", slug, f"categoria-{escape(slug) or 'todas'}", escape(nome),
                         slug == busca["categoria"], "filtro")
     faixa = ""
@@ -106,7 +107,7 @@ def cartao(item):
         </li>"""
 
 
-def pagina_inicial(categorias, resultado=None, pagina=1, erro=""):
+def pagina_inicial(resultado=None, pagina=1, erro=""):
     resultado = resultado or {"busca": dict(BUSCA_VAZIA), "itens": [], "tem_mais": False}
     busca, itens = resultado["busca"], resultado["itens"]
     filtrando = bool(erro) or any((busca["texto"], busca["categoria"],
@@ -139,7 +140,7 @@ def pagina_inicial(categorias, resultado=None, pagina=1, erro=""):
     aviso = f'<div class="aviso erro" role="alert">{escape(erro)}</div>' if erro else ""
     return estrutura(f"""{topo}{aviso}<ul class="itens">{cartoes}</ul>
         <nav class="paginacao" aria-label="Paginação">{paginacao}</nav>""",
-        "Busca" if filtrando else "Seu caderno", formulario_busca(busca, categorias))
+        "Busca" if filtrando else "Seu caderno", formulario_busca(busca))
 
 
 def campo(nome, rotulo, valores, tipo="text", atributos="", ajuda=""):
@@ -185,7 +186,7 @@ def pilula(nome, valor, identificador, rotulo, marcado, classe="opcao-nota"):
 
 
 def nome_categoria(categoria):
-    return "Lugar" if categoria == "lugar" else "Produto"
+    return CATEGORIAS[categoria_raiz(categoria)]["singular"]
 
 
 def estrelas_leitura(nota):
@@ -224,24 +225,29 @@ def texto_nota(nota):
 
 
 def campos_identificacao(valores):
-    html = '<div class="linha"><div><label for="categoria">O que é?</label><select id="categoria" name="categoria">'
-    for slug, nome in (("lugar", "Lugar"), ("produto", "Produto")):
-        html += f'<option value="{slug}" {"selected" if valores["categoria"] == slug else ""}>{nome}</option>'
-    return html + '</select></div><div class="crescer">' + campo("nome", "Nome", valores, atributos='required maxlength="200" autocomplete="off" placeholder="Aquele bar da esquina…"') + '</div></div>'
+    html = '<label for="categoria">O que é?</label><select id="categoria" name="categoria">'
+    for slug, categoria in CATEGORIAS.items():
+        html += f'<option value="{slug}" {"selected" if valores["categoria"] == slug else ""}>{categoria["singular"]}</option>'
+    return html + '</select>' + campo("nome", "Nome", valores, atributos='required maxlength="200" autocomplete="off" placeholder="Aquele bar da esquina…"')
 
 
 def campos_item(valores):
-    html = texto("descricao", "Sobre o lugar ou produto", valores, "O que vale lembrar sobre ele?")
-    texto_livre = ("text", 'maxlength="1000"')
-    telefone = ("tel", 'inputmode="tel" autocomplete="off" maxlength="30" placeholder="(11) 98765-4321"')
-    for categoria, campos in (("lugar", (("endereco", "Endereço", texto_livre), ("bairro", "Bairro", texto_livre),
-                                         ("cidade", "Cidade", texto_livre), ("telefone", "Telefone / WhatsApp", telefone))),
-                              ("produto", (("marca", "Marca", texto_livre), ("onde_comprei", "Onde comprei", texto_livre),
-                                           ("link", "Link", ("url", 'maxlength="1000" placeholder="https://"'))))):
-        html += f'<div data-categoria="{categoria}"><p class="categoria">Detalhes do {"lugar" if categoria == "lugar" else "produto"}</p>'
-        html += "".join(campo(nome, rotulo, valores, tipo, atributos) for nome, rotulo, (tipo, atributos) in campos)
+    html = texto("descricao", "Descrição", valores, "O que vale lembrar sobre ele?")
+    # Um grupo por categoria; o JavaScript mostra só o da categoria escolhida e desativa os outros.
+    for slug, categoria in CATEGORIAS.items():
+        html += f'<div data-categoria="{slug}"><p class="categoria">Detalhes · {categoria["singular"]}</p>'
+        for nome, rotulo in categoria["campos"]:
+            tipo, atributos = TIPOS_CAMPO.get(nome, ("text", 'maxlength="1000"'))
+            html += campo(f"{slug}-{nome}", rotulo, valores, tipo, atributos)
         html += '</div>'
     return html
+
+
+TIPOS_CAMPO = {
+    "telefone": ("tel", 'inputmode="tel" autocomplete="off" maxlength="30" placeholder="(11) 98765-4321"'),
+    "link": ("url", 'maxlength="1000" placeholder="https://"'),
+    "ano": ("text", 'inputmode="numeric" maxlength="4" placeholder="1999"'),
+}
 
 
 def campos_experiencia(valores):
@@ -263,7 +269,7 @@ def aviso_erro(erro):
 def formulario(hoje, chave, item=None, valores=None, erro=""):
     valores = dict(valores or {})
     valores.setdefault("data", hoje)
-    valores.setdefault("categoria", "lugar")
+    valores.setdefault("categoria", CATEGORIA_PADRAO)
     titulo = "Mais uma lembrança" if item else "Guardar uma experiência"
     if item:
         identificacao = f'<input type="hidden" name="item_id" value="{item["id"]}"><div class="item-escolhido"><span class="categoria">{nome_categoria(item["categoria"])}</span><h2>{escape(item["nome"])}</h2><a href="/">Escolher outro item</a></div>'
@@ -285,8 +291,10 @@ def formulario(hoje, chave, item=None, valores=None, erro=""):
 
 def valores_item(item):
     """Converte o registro do banco nos valores exibidos pelo formulário de edição."""
+    prefixo = categoria_raiz(item["categoria"])
+    detalhes = json.loads(item["detalhes"] or "{}")
     return {"nome": item["nome"], "categoria": item["categoria"], "descricao": item["descricao"],
-            **json.loads(item["detalhes"] or "{}")}
+            **{f"{prefixo}-{campo}": valor for campo, valor in detalhes.items()}}
 
 
 def valores_experiencia(experiencia, tags):
@@ -352,7 +360,7 @@ def confirmacao(experiencia, fotos, tags=(), guardada=False):
     anexar = f"""<details class="anexar" {"open" if guardada and not fotos else ""}><summary>Anexar fotos</summary>
         <form id="anexar-fotos" data-experiencia="{experiencia['id']}" data-total="{len(fotos)}">
         {seletor_fotos()}<button class="botao secundario" type="submit">Enviar fotos</button></form></details>"""
-    return estrutura(f"""<a class="voltar" href="/itens/{experiencia['item_id']}">← Voltar ao {nome_categoria(experiencia['categoria']).lower()}</a>
+    return estrutura(f"""<a class="voltar" href="/itens/{experiencia['item_id']}">← Todas as experiências</a>
         {topo}
         <article class="resumo"><p class="linha-nota">{estrelas_leitura(experiencia['nota'])}<span class="categoria">{data_br(experiencia['data'])} · {escape(texto_nota(experiencia['nota']))}</span></p>
         {titulo_cartao}<p class="relato">{escape(experiencia['texto'])}</p>
@@ -365,12 +373,16 @@ def confirmacao(experiencia, fotos, tags=(), guardada=False):
         <a href="/">Voltar ao caderno</a></div>""", titulo_pagina)
 
 
-def contatos_item(detalhes):
-    """Endereço em texto; telefone e link viram ações. Link e telefone já foram validados."""
+def contatos_item(categoria, detalhes):
+    """Endereço sem rótulo, demais detalhes com rótulo; telefone e link (já validados) viram ações."""
     linhas = []
-    local = " · ".join(detalhes[c] for c in ("endereco", "bairro", "cidade", "marca", "onde_comprei") if detalhes.get(c))
-    if local:
-        linhas.append(f'<p class="muted">{escape(local)}</p>')
+    endereco = " · ".join(detalhes[c] for c in ("endereco", "bairro", "cidade") if detalhes.get(c))
+    if endereco:
+        linhas.append(f'<p class="muted">{escape(endereco)}</p>')
+    outros = " · ".join(f"{rotulo}: {detalhes[nome]}" for nome, rotulo in CATEGORIAS[categoria_raiz(categoria)]["campos"]
+                        if detalhes.get(nome) and nome not in ("endereco", "bairro", "cidade", "telefone", "link"))
+    if outros:
+        linhas.append(f'<p class="muted">{escape(outros)}</p>')
     acoes = ""
     if detalhes.get("telefone"):
         contato = contato_telefone(detalhes["telefone"])
@@ -414,7 +426,7 @@ def pagina_item(item, experiencias):
         <p class="sobretitulo">{nome_categoria(item['categoria']).upper()}</p><h1 class="titulo-form">{escape(item['nome'])}</h1>
         {resumo_media([e['nota'] for e in experiencias])}{linha_voltaria(experiencias)}
         {f'<p class="relato">{escape(item["descricao"])}</p>' if item['descricao'] else ''}
-        {contatos_item(detalhes)}
+        {contatos_item(item['categoria'], detalhes)}
         <p class="editar"><a href="/itens/{item['id']}/editar">Editar item</a></p>
         <div class="acoes"><a class="botao principal" href="/registrar?item_id={item['id']}">Registrar uma experiência</a></div>
         <h2>Experiências</h2><ul class="experiencias">{lista}</ul>""", item["nome"])

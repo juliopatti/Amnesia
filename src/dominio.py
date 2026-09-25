@@ -7,10 +7,26 @@ from urllib.parse import urlsplit
 
 
 FUSO_LOCAL = timezone(timedelta(hours=-3))
-CAMPOS_CATEGORIA = {
-    "lugar": ("endereco", "bairro", "cidade", "telefone"),
-    "produto": ("marca", "onde_comprei", "link"),
+CAMPOS_LOCAL = (("endereco", "Endereço"), ("bairro", "Bairro"), ("cidade", "Cidade"),
+                ("telefone", "Telefone / WhatsApp"))
+# Fonte única das categorias raiz, na ordem de exibição. A tabela `categorias` guarda os
+# mesmos slugs para integridade referencial; um teste garante que as duas listas batem.
+# Subcategorias usam o slug da raiz como prefixo ("musica.rock") e herdam os campos dela.
+CATEGORIAS = {
+    "restaurante": {"nome": "Bares e restaurantes", "singular": "Bar ou restaurante", "campos": CAMPOS_LOCAL},
+    "lugar": {"nome": "Lugares", "singular": "Lugar", "campos": CAMPOS_LOCAL},
+    "produto": {"nome": "Produtos", "singular": "Produto",
+                "campos": (("marca", "Marca"), ("onde_comprei", "Onde comprei"), ("link", "Link"))},
+    "filme": {"nome": "Filmes", "singular": "Filme",
+              "campos": (("direcao", "Direção"), ("ano", "Ano"), ("onde_assisti", "Onde assisti"))},
+    "serie": {"nome": "Séries", "singular": "Série",
+              "campos": (("criacao", "Criação"), ("ano", "Ano"), ("onde_assisti", "Onde assisti"))},
+    "livro": {"nome": "Livros", "singular": "Livro",
+              "campos": (("autoria", "Autoria"), ("editora", "Editora"), ("ano", "Ano"))},
+    "musica": {"nome": "Música", "singular": "Música",
+               "campos": (("artista", "Artista"), ("album", "Álbum"), ("ano", "Ano"), ("link", "Link"))},
 }
+CATEGORIA_PADRAO = "restaurante"
 MAX_FOTO_BYTES = 768 * 1024
 # "Voltaria?" do mais animado ao mais contrariado; None é sem resposta.
 VOLTARIA = {
@@ -77,21 +93,39 @@ def horario_local(instante):
     return instante.astimezone(FUSO_LOCAL).isoformat(timespec="seconds")
 
 
-def preparar_item(nome, categoria="lugar", descricao="", detalhes=None):
+def categoria_raiz(categoria):
+    """"musica.rock" → "musica". A raiz define os campos; o banco confirma que o slug existe."""
+    return categoria.split(".", 1)[0]
+
+
+def campos_da_categoria(categoria):
+    """Nomes dos campos de detalhe; categoria desconhecida não tem nenhum."""
+    definicao = CATEGORIAS.get(categoria_raiz(categoria)) if isinstance(categoria, str) else None
+    return tuple(campo for campo, _ in definicao["campos"]) if definicao else ()
+
+
+def categoria_valida(categoria):
+    return (isinstance(categoria, str) and categoria_raiz(categoria) in CATEGORIAS
+            and bool(re.fullmatch(r"[a-z]+(?:\.[a-z]+)*", categoria)))
+
+
+def preparar_item(nome, categoria=CATEGORIA_PADRAO, descricao="", detalhes=None):
     nome = texto_limpo(nome, "Nome", 200)
     if not nome:
         raise ValueError("Dê um nome para conseguir lembrar depois.")
-    if not isinstance(categoria, str) or categoria not in CAMPOS_CATEGORIA:
+    if not categoria_valida(categoria):
         raise ValueError("Categoria desconhecida.")
     if detalhes is None:
         detalhes = {}
     if not isinstance(detalhes, dict):
         raise ValueError("Os detalhes precisam ser um objeto.")
-    if any(campo not in CAMPOS_CATEGORIA[categoria] for campo in detalhes):
+    if any(campo not in campos_da_categoria(categoria) for campo in detalhes):
         raise ValueError("Há detalhes que não pertencem a essa categoria.")
     detalhes = {campo: texto_limpo(valor, campo, 1000) for campo, valor in detalhes.items()}
     if detalhes.get("telefone"):
         contato_telefone(detalhes["telefone"])
+    if detalhes.get("ano") and not re.fullmatch(r"[0-9]{4}", detalhes["ano"]):
+        raise ValueError("Ano: use quatro dígitos, como 1999.")
     if detalhes.get("link"):
         try:
             link = urlsplit(detalhes["link"])
@@ -201,7 +235,7 @@ def expressao_busca(texto):
 
 def preparar_busca(texto="", categoria="", nota_min="", nota_max=""):
     texto = texto_limpo(texto, "Busca", MAX_BUSCA)
-    if categoria and categoria not in CAMPOS_CATEGORIA:
+    if categoria and not categoria_valida(categoria):
         raise ValueError("Categoria desconhecida.")
     nota_min, nota_max = normalizar_nota(nota_min), normalizar_nota(nota_max)
     if nota_min is not None and nota_max is not None and nota_min > nota_max:

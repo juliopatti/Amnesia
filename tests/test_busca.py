@@ -7,7 +7,6 @@ from servicos import buscar, criar_item, registrar_experiencia
 from dubles import BancoSQLite
 
 AGORA = datetime(2026, 9, 25, 1, tzinfo=timezone.utc)
-CATEGORIAS = [{"slug": "lugar", "nome": "Lugares"}, {"slug": "produto", "nome": "Produtos"}]
 
 
 class TestBusca(unittest.IsolatedAsyncioTestCase):
@@ -105,7 +104,7 @@ class TestBusca(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(len(set(ids)), 5)
 
     async def test_filtros_invalidos(self):
-        for criterios in ({"categoria": "filme"}, {"nota_min": "4", "nota_max": "1"}, {"nota_min": "abc"}):
+        for criterios in ({"categoria": "inexistente"}, {"nota_min": "4", "nota_max": "1"}, {"nota_min": "abc"}):
             with self.subTest(criterios=criterios), self.assertRaises(ValueError):
                 await buscar(self.banco, criterios)
 
@@ -118,26 +117,26 @@ class TestPaginaBusca(unittest.TestCase):
     def test_trecho_escapado_com_destaque(self):
         item = {"id": 1, "nome": "Bar", "categoria": "lugar", "descricao": "",
                 "trecho": "<b>\x02Coxinha\x03</b> \x02solta", "media": 2.25, "experiencias": 2}
-        pagina = pagina_inicial(CATEGORIAS, self.resultado([item], "coxinha", '"coxinha"*'))
+        pagina = pagina_inicial(self.resultado([item], "coxinha", '"coxinha"*'))
         self.assertIn("&lt;b&gt;<mark>Coxinha</mark>&lt;/b&gt; solta", pagina)
         self.assertNotIn("\x02", pagina)
         self.assertIn("Média 2,25 · 2 experiências", pagina)
         self.assertIn("1 item encontrado", pagina)
 
     def test_estados_vazios(self):
-        self.assertIn("A memória começa aqui", pagina_inicial(CATEGORIAS))
-        sem_resultado = pagina_inicial(CATEGORIAS, self.resultado(texto="<xyz>", expressao='"xyz"*'))
+        self.assertIn("A memória começa aqui", pagina_inicial())
+        sem_resultado = pagina_inicial(self.resultado(texto="<xyz>", expressao='"xyz"*'))
         self.assertIn("Nenhuma lembrança com “&lt;xyz&gt;”", sem_resultado)
         self.assertIn("Limpar busca", sem_resultado)
-        self.assertIn("Só sobrou pontuação", pagina_inicial(CATEGORIAS, self.resultado(texto="!!!")))
-        self.assertIn("com esses filtros", pagina_inicial(CATEGORIAS, self.resultado(nota_min=4.0)))
-        erro = pagina_inicial(CATEGORIAS, self.resultado(), erro="A nota <mínima>")
+        self.assertIn("Só sobrou pontuação", pagina_inicial(self.resultado(texto="!!!")))
+        self.assertIn("com esses filtros", pagina_inicial(self.resultado(nota_min=4.0)))
+        erro = pagina_inicial(self.resultado(), erro="A nota <mínima>")
         self.assertIn('role="alert">A nota &lt;mínima&gt;', erro)
 
     def test_formulario_mantem_filtros_e_paginacao_preserva(self):
         busca = self.resultado(texto='bar "x"', expressao='"bar"* "x"*', tem_mais=True,
                                categoria="lugar", nota_min=3.5, nota_max=5.0)
-        pagina = pagina_inicial(CATEGORIAS, busca, pagina=2)
+        pagina = pagina_inicial(busca, pagina=2)
         self.assertIn('value="bar &quot;x&quot;"', pagina)
         self.assertIn('value="lugar" checked', pagina)
         self.assertIn('value="3.5" selected', pagina)
