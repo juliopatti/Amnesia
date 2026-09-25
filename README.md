@@ -6,7 +6,7 @@ pessoa; repositório de código público durante a avaliação da disciplina.
 [Boas práticas](BOAS_PRATICAS.md) descreve as convenções de código, documentação e
 testes. Nesta fase, os commits vão direto para `main`.
 
-## O que funciona agora — incremento 3 e edição
+## O que funciona agora — incremento 4
 
 - Criar lugar ou produto; só o nome exige digitação.
 - Guardar só o item ou já registrar uma experiência na mesma tela.
@@ -32,9 +32,10 @@ testes. Nesta fase, os commits vão direto para `main`.
   (nota, relato, data, pedido, preço, tags e “voltaria?”). A busca acompanha.
 - **Excluir** uma experiência ou uma foto, sempre com uma tela de confirmação.
 
-Tocar no nome de um item abre a página dele, com a **nota média** em estrelas e uma
-lista simples das experiências. A linha do tempo completa e o resumo “voltaria?”
-são o incremento 4.
+Tocar no nome de um item abre a página dele: **nota média** em estrelas, resumo do
+“Voltaria?” (quantas respostas foram sim e qual foi a última), descrição, endereço,
+contatos e as experiências da mais recente para a mais antiga, com a miniatura da
+primeira foto. Cada experiência abre na própria página, com tudo o que foi anotado.
 A publicação protegida por Access é o incremento 5.
 
 ## Rodar no seu computador (Linux)
@@ -88,7 +89,7 @@ biblioteca de processamento de imagens ou dependência de CDN.
 PYTHONPATH=src python3 -m unittest discover -s tests -v
 ```
 
-Resultado esperado: **66 testes e `OK`**. Esta suíte usa apenas a stdlib,
+Resultado esperado: **68 testes e `OK`**. Esta suíte usa apenas a stdlib,
 não faz chamadas de rede e pode rodar mesmo sem as instalações do passo 2.
 
 ### 4. Prepare ou atualize o banco local
@@ -224,7 +225,7 @@ mostra as execuções de cada push. O workflow configura:
 Não exige segredos Cloudflare e não realiza deploy. As dependências são baixadas
 na preparação do runner; os testes do app usam apenas recursos locais.
 
-Validação local do incremento 3 e da edição: **66 testes offline e 8 cenários de
+Validação local do incremento 4: **68 testes offline e 8 cenários de
 navegador aprovados**. O teste automatizado de envio rápido não
 substitui cronometrar uma pessoa usando um celular real; essa validação permanece
 para a entrega publicada. Também não houve teste em Safari/iPhone nesta etapa.
@@ -308,7 +309,6 @@ publicar. `workers.dev` e previews permanecem desabilitados nesta fase.
 
 ## Próximos incrementos
 
-4. Linha do tempo completa na página do item, média e “voltaria/compraria de novo?”.
 5. Deploy, Access e teste de registro em menos de 30 segundos no celular.
 
 Um incremento por vez. Nenhuma integração com IA nesta fase.
