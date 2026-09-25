@@ -28,6 +28,9 @@
   não informada, preço zero versus desconhecido.
 - Alterações futuras de um esquema já publicado usam novas migrações. Não reescrever
   migrações aplicadas em produção. Manter dados e FTS sincronizados atomicamente.
+- Migrações que convertem dados ganham teste com registros no formato anterior e
+  são aplicadas no D1 local de testes antes do commit.
+- A CSP proíbe `style` e `script` inline: estilos variáveis usam classes do CSS.
 - Evitar abstrações e dependências sem necessidade concreta.
 
 ## Estratégia de testes
@@ -40,7 +43,7 @@ Um bug corrigido deve ganhar um teste de regressão quando for reproduzível.
 | --- | --- | --- |
 | Unidade | Notas, valores ausentes, datas, textos, categorias e entradas inválidas | Automatizada offline |
 | Serviços | Casos de uso com dublês sem rede e dependências injetadas | Cadastro, fotos, busca, edição e exclusão automatizados |
-| Banco | Restrições, relacionamentos, migrações e FTS em SQLite em memória | Migrações, sincronização (inclusive em edição e exclusão) e consultas de busca automatizadas |
+| Banco | Restrições, relacionamentos, migrações e FTS em SQLite em memória | Migrações (inclusive conversão de dados), sincronização em edição e exclusão e consultas de busca automatizadas |
 | Runtime | Migração D1 local, bindings reais e respostas HTTP no Python Worker | Coberto pelo Playwright com D1 e R2 locais |
 | Integração de escrita | Atomicidade, atualização da FTS, repetição de envio e falhas de upload | Automatizada, incluindo rollback de cadastro, edição e exclusão e reenvio concorrente |
 | Interface e ponta a ponta | Cadastrar, buscar e abrir a linha do tempo pelo navegador | Cadastro, fotos, busca, edição e exclusão cobertos; timeline no próximo incremento |

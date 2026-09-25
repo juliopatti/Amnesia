@@ -14,7 +14,11 @@ testes. Nesta fase, os commits vão direto para `main`.
 - Escolher notas de **0 a 5 em passos de meia estrela**, por toque ou teclado.
   “Sem nota” é diferente de zero.
 - Escrever a descrição do item e o relato de cada experiência separadamente.
-- Informar data, pedido/provado, preço, tags e “voltaria/compraria de novo?”.
+- Informar data, pedido/provado, preço e tags.
+- Responder “Voltaria / compraria de novo?” numa escala: Sem sombra de dúvidas,
+  Voltaria ué, Talvez, Uai sei não, Não por livre espontânea vontade ou Nem a pau,
+  Juvenal! “Sem resposta” é diferente de qualquer uma delas.
+- Guardar telefone/WhatsApp do lugar. A página dele oferece **Ligar** e **WhatsApp**.
 - Anexar até 3 fotos por experiência. O navegador reduz para até 1600 pixels no
   maior lado e 768 KiB por foto, converte para JPEG e remove os metadados.
 - Consultar os itens por categoria e registrar outra experiência a partir deles.
@@ -28,8 +32,9 @@ testes. Nesta fase, os commits vão direto para `main`.
   (nota, relato, data, pedido, preço, tags e “voltaria?”). A busca acompanha.
 - **Excluir** uma experiência ou uma foto, sempre com uma tela de confirmação.
 
-Tocar no nome de um item abre a página dele, com uma lista simples das experiências.
-A linha do tempo completa, com média e resumo “voltaria?”, é o incremento 4.
+Tocar no nome de um item abre a página dele, com a **nota média** em estrelas e uma
+lista simples das experiências. A linha do tempo completa e o resumo “voltaria?”
+são o incremento 4.
 A publicação protegida por Access é o incremento 5.
 
 ## Rodar no seu computador (Linux)
@@ -83,7 +88,7 @@ biblioteca de processamento de imagens ou dependência de CDN.
 PYTHONPATH=src python3 -m unittest discover -s tests -v
 ```
 
-Resultado esperado: **62 testes e `OK`**. Esta suíte usa apenas a stdlib,
+Resultado esperado: **66 testes e `OK`**. Esta suíte usa apenas a stdlib,
 não faz chamadas de rede e pode rodar mesmo sem as instalações do passo 2.
 
 ### 4. Prepare ou atualize o banco local
@@ -92,9 +97,17 @@ não faz chamadas de rede e pode rodar mesmo sem as instalações do passo 2.
 uv run pywrangler d1 migrations apply amnesia --local
 ```
 
-Responda `y` se houver confirmação. Em uma instalação nova, as migrações
-`0001_inicial.sql` e `0002_cadastro.sql` serão aplicadas. Quem já executou o
-incremento 1 precisa aplicar apenas a nova migração; o comando detecta isso.
+Responda `y` se houver confirmação. O comando aplica só as migrações que faltam.
+Rode de novo sempre que atualizar o código: sem a migração nova, o app falha ao
+gravar.
+
+A `0003_voltaria.sql` converte as respostas antigas: **Sim** vira “Voltaria, ué” e
+**Não** vira “Não por livre espontânea vontade”; sem resposta continua sem resposta.
+Antes de aplicá-la sobre dados reais, faça uma cópia:
+
+```bash
+cp -r .wrangler/state .wrangler/state-copia-$(date +%Y%m%d-%H%M)
+```
 
 `--local` guarda o banco em `.wrangler/state/`. O identificador com zeros em
 `wrangler.jsonc` é proposital para esta fase. Não precisa criar D1 no painel.
@@ -211,7 +224,7 @@ mostra as execuções de cada push. O workflow configura:
 Não exige segredos Cloudflare e não realiza deploy. As dependências são baixadas
 na preparação do runner; os testes do app usam apenas recursos locais.
 
-Validação local do incremento 3 e da edição: **62 testes offline e 8 cenários de
+Validação local do incremento 3 e da edição: **66 testes offline e 8 cenários de
 navegador aprovados**. O teste automatizado de envio rápido não
 substitui cronometrar uma pessoa usando um celular real; essa validação permanece
 para a entrega publicada. Também não houve teste em Safari/iPhone nesta etapa.
@@ -225,14 +238,16 @@ para a entrega publicada. Também não houve teste em Safari/iPhone nesta etapa.
 | `src/armazenamento.py` | SQL parametrizado, transações D1, projeção e consulta FTS, adaptador R2 |
 | `src/worker.py` | Rotas HTTP, limites de corpo e checagem de origem |
 | `src/paginas.py` | HTML com escape de valores |
-| `static/` | CSS, htmx local e JavaScript de formulário/fotos |
+| `static/` | CSS, ícone da seta dos selects, htmx local e JavaScript de formulário/fotos |
 | `migrations/` | Evolução do esquema sem reescrever migrações anteriores |
 | `tests/` | Regras, serviços com dublês, SQL real em SQLite e testes de navegador |
 
 O item contém nome, descrição e detalhes em JSON por categoria. Novas categorias
 exigem cadastro na tabela `categorias`, definição em `CAMPOS_CATEGORIA` e campos no
 formulário, sem reescrever as tabelas. Experiências têm data, nota opcional, relato,
-pedido, preço em centavos de reais, resposta opcional e tags.
+pedido, preço em centavos de reais, “voltaria?” de 0 (Nem a pau) a 5 (Sem sombra de
+dúvidas) ou nulo, e tags. O telefone fica nos detalhes do lugar. Com DDD, o app
+assume +55 para o WhatsApp; sem DDD ou 0800, oferece só a ligação.
 
 As chaves de envio evitam duplicação ao repetir um formulário: **o primeiro envio
 confirmado prevalece**. Para registrar outra experiência, abra um novo formulário.
