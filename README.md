@@ -155,7 +155,8 @@ SQLite em memória ajuda a verificar SQL; não substitui testar o binding no run
 
 A suíte offline também está configurada para rodar a cada push no GitHub, em
 Python 3.12 e 3.14. Confira o resultado na aba **Actions → Testes** após enviar
-o repositório. O workflow está preparado; ainda não foi executado no GitHub.
+o repositório. A [primeira execução no GitHub](https://github.com/juliopatti/Amnesia/actions/runs/36088361619)
+foi aprovada nas duas versões. O workflow não realiza deploy.
 
 Validação realizada neste incremento: 18 testes offline aprovados, migração aplicada
 no D1 local, `/` e `/saude` com HTTP 200, caminho inexistente com 404 e POST com 405.
