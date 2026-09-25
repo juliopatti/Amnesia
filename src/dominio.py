@@ -13,17 +13,18 @@ CAMPOS_LOCAL = (("endereco", "Endereço"), ("bairro", "Bairro"), ("cidade", "Cid
 # mesmos slugs para integridade referencial; um teste garante que as duas listas batem.
 # Subcategorias usam o slug da raiz como prefixo ("musica.rock") e herdam os campos dela.
 CATEGORIAS = {
-    "restaurante": {"nome": "Bares e restaurantes", "singular": "Bar ou restaurante", "campos": CAMPOS_LOCAL},
-    "lugar": {"nome": "Lugares", "singular": "Lugar", "campos": CAMPOS_LOCAL},
-    "produto": {"nome": "Produtos", "singular": "Produto",
+    "restaurante": {"nome": "Bares e restaurantes", "singular": "Bar ou restaurante",
+                    "exemplo": "Aquele bar da esquina…", "campos": CAMPOS_LOCAL},
+    "lugar": {"nome": "Lugares", "singular": "Lugar", "exemplo": "Aquele lugar sem pessoas…", "campos": CAMPOS_LOCAL},
+    "produto": {"nome": "Produtos", "singular": "Produto", "exemplo": "Aquela obra de arte…",
                 "campos": (("marca", "Marca"), ("onde_comprei", "Onde comprei"), ("link", "Link"))},
-    "filme": {"nome": "Filmes", "singular": "Filme",
+    "filme": {"nome": "Filmes", "singular": "Filme", "exemplo": "Aquele em que você dormiu no meio…",
               "campos": (("direcao", "Direção"), ("ano", "Ano"), ("onde_assisti", "Onde assisti"))},
-    "serie": {"nome": "Séries", "singular": "Série",
+    "serie": {"nome": "Séries", "singular": "Série", "exemplo": "A que você largou na segunda temporada…",
               "campos": (("criacao", "Criação"), ("ano", "Ano"), ("onde_assisti", "Onde assisti"))},
-    "livro": {"nome": "Livros", "singular": "Livro",
+    "livro": {"nome": "Livros", "singular": "Livro", "exemplo": "O que está na cabeceira há um ano…",
               "campos": (("autoria", "Autoria"), ("editora", "Editora"), ("ano", "Ano"))},
-    "musica": {"nome": "Música", "singular": "Música",
+    "musica": {"nome": "Música", "singular": "Música", "exemplo": "Perdida na playlist de 8 anos atrás…",
                "campos": (("artista", "Artista"), ("album", "Álbum"), ("ano", "Ano"), ("link", "Link"))},
 }
 CATEGORIA_PADRAO = "restaurante"

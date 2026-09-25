@@ -121,7 +121,7 @@ class TestPaginaBusca(unittest.TestCase):
         self.assertIn("&lt;b&gt;<mark>Coxinha</mark>&lt;/b&gt; solta", pagina)
         self.assertNotIn("\x02", pagina)
         self.assertIn("Média 2,25 · 2 experiências", pagina)
-        self.assertIn("1 item encontrado", pagina)
+        self.assertIn("1 lembrança resgatada", pagina)
 
     def test_estados_vazios(self):
         self.assertIn("A memória começa aqui", pagina_inicial())

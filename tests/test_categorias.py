@@ -68,8 +68,11 @@ class TestFormularioCategorias(unittest.TestCase):
         repetidos = {nome for nome in nomes if nomes.count(nome) > 1} - {"nota", "voltaria", "acao"}
         self.assertEqual(repetidos, set(), "sem JavaScript, nomes repetidos seriam enviados juntos")
         for campo in ('name="restaurante-bairro"', 'name="lugar-bairro"', 'name="filme-direcao"',
-                      'name="musica-artista"', '<option value="restaurante" selected>Bar ou restaurante'):
+                      'name="musica-artista"', 'value="restaurante" data-exemplo="Aquele bar da esquina…" selected>',
+                      'placeholder="Aquele bar da esquina…"', 'data-exemplo="Perdida na playlist de 8 anos atrás…"'):
             self.assertIn(campo, pagina)
+        livro = formulario("2026-09-24", "a" * 32, valores={"categoria": "livro"})
+        self.assertIn('placeholder="O que está na cabeceira há um ano…"', livro)
 
     def test_edicao_preenche_campos_da_categoria(self):
         item = {"id": 1, "nome": "Cléo", "categoria": "filme", "descricao": "",

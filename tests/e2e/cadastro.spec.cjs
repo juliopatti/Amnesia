@@ -179,7 +179,7 @@ test('busca no topo encontra relato, ignora acento, filtra e trata entradas espe
   await resposta;
   await expect(page.locator('.item')).toHaveCount(1);
   await expect(page.locator('.item')).toContainText(nome);
-  await expect(page.getByRole('status')).toHaveText('1 item encontrado');
+  await expect(page.getByRole('status')).toHaveText('1 lembrança resgatada');
 
   resposta = htmx();
   await page.getByLabel('Média de').selectOption('4.5');
@@ -284,7 +284,9 @@ test('edita item e experiência, reflete na busca e exclui com confirmação', a
 test('categorias novas: filme com detalhes próprios e filtro por categoria', async ({ page }) => {
   const nome = nomeUnico('Filme de teste');
   await page.goto('/registrar');
+  await expect(page.getByLabel('Nome', { exact: true })).toHaveAttribute('placeholder', 'Aquele bar da esquina…');
   await page.getByLabel('O que é?').selectOption('filme');
+  await expect(page.getByLabel('Nome', { exact: true })).toHaveAttribute('placeholder', 'Aquele em que você dormiu no meio…');
   await page.getByLabel('Nome', { exact: true }).fill(nome);
   await page.getByText('Mais detalhes', { exact: false }).click();
   await expect(page.locator('#filme-direcao')).toBeVisible();

@@ -4,6 +4,9 @@
   const selecoes = new WeakMap();
 
   function atualizarFormulario() {
+    const exemplo = document.querySelector('#categoria')?.selectedOptions[0]?.dataset.exemplo;
+    const nome = document.querySelector('#nome');
+    if (exemplo && nome) nome.placeholder = exemplo;
     document.querySelectorAll('[data-categoria]').forEach(grupo => {
       const selecionada = document.querySelector('#categoria')?.value || 'lugar';
       grupo.hidden = grupo.dataset.categoria !== selecionada;

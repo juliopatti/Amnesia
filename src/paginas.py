@@ -130,11 +130,14 @@ def pagina_inicial(resultado=None, pagina=1, erro=""):
         paginacao += f'<a href="{escape(url_busca(busca, pagina + 1))}">Próximos →</a>'
     if filtrando:
         quantidade = len(itens) + (pagina - 1) * 20
-        contagem = "Nada encontrado" if not itens else f"{quantidade}{'+' if resultado['tem_mais'] else ''} {'item encontrado' if quantidade == 1 else 'itens encontrados'}"
+        mais = "+" if resultado["tem_mais"] else ""
+        resgatadas = "lembrança resgatada" if quantidade == 1 and not mais else "lembranças resgatadas"
+        contagem = "Você se esqueceu até de registrar…" if not itens else f"{quantidade}{mais} {resgatadas}"
         topo = f'<div class="resultados"><h1 class="titulo-busca">Resultados</h1><p class="muted" role="status">{contagem}</p></div>'
     else:
         topo = """<section class="abertura"><p class="sobretitulo">SEU CADERNO DE EXPERIÊNCIAS</p>
         <h1>Foi bom? <span>Melhor anotar.</span></h1>
+        <p class="muted">Você já esteve aqui. Óbvio que não lembra.</p>
         <a class="botao principal" href="/registrar">+ Registrar experiência</a></section>
         <div class="titulo-lista"><h2>O que ficou na memória</h2></div>"""
     aviso = f'<div class="aviso erro" role="alert">{escape(erro)}</div>' if erro else ""
@@ -226,9 +229,12 @@ def texto_nota(nota):
 
 def campos_identificacao(valores):
     html = '<label for="categoria">O que é?</label><select id="categoria" name="categoria">'
+    # O exemplo do campo Nome acompanha a categoria; fotos.js troca ao mudar a seleção.
     for slug, categoria in CATEGORIAS.items():
-        html += f'<option value="{slug}" {"selected" if valores["categoria"] == slug else ""}>{categoria["singular"]}</option>'
-    return html + '</select>' + campo("nome", "Nome", valores, atributos='required maxlength="200" autocomplete="off" placeholder="Aquele bar da esquina…"')
+        html += (f'<option value="{slug}" data-exemplo="{escape(categoria["exemplo"])}" '
+                 f'{"selected" if valores["categoria"] == slug else ""}>{categoria["singular"]}</option>')
+    exemplo = escape(CATEGORIAS.get(categoria_raiz(valores["categoria"]), CATEGORIAS[CATEGORIA_PADRAO])["exemplo"])
+    return html + '</select>' + campo("nome", "Nome", valores, atributos=f'required maxlength="200" autocomplete="off" placeholder="{exemplo}"')
 
 
 def campos_item(valores):
@@ -318,7 +324,7 @@ def formulario_item(item, valores, erro=""):
 
 def formulario_experiencia(experiencia, valores, erro=""):
     return estrutura(f"""<a class="voltar" href="/experiencias/{experiencia['id']}">← Voltar à experiência</a>
-        <h1 class="titulo-form">Editar experiência</h1>
+        <h1 class="titulo-form">Editar experiência</h1><p class="muted">A memória é sua. Pode retocar.</p>
         <div class="item-escolhido"><span class="categoria">{nome_categoria(experiencia['categoria'])}</span><h2>{escape(experiencia['nome'])}</h2></div>
         {aviso_erro(erro)}
         <form id="editar-experiencia" action="/experiencias/{experiencia['id']}/editar" method="post">
