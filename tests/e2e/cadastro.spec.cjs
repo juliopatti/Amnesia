@@ -303,6 +303,13 @@ test('categorias novas: filme com detalhes próprios e filtro por categoria', as
   await resposta;
   await expect(page.locator('.itens')).toContainText(nome);
   await expect(page.locator('.itens')).not.toContainText('Bar de teste');
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Filmes');
+  await page.getByRole('link', { name: '+ Registrar experiência' }).click();
+  await expect(page).toHaveURL(/\/registrar\?categoria=filme$/);
+  await expect(page.getByLabel('O que é?')).toHaveValue('filme');
+  await expect(page.getByLabel('Como foi?')).toHaveAttribute('placeholder', 'Dormi no meio. Acordei no final. Não perdi nada.');
+  await page.goto('/registrar?categoria=%3Cscript%3E');
+  await expect(page.getByLabel('O que é?')).toHaveValue('restaurante');
 });
 
 test('no computador todas as categorias aparecem sem rolagem', async ({ page }) => {

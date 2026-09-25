@@ -88,6 +88,26 @@ class TestFormularioCategorias(unittest.TestCase):
         self.assertIn('id="filme-direcao" name="filme-direcao" type="text" value="Agnès Varda"', pagina)
         self.assertIn("Direção: Agnès Varda · Ano: 1962", pagina_item(item, []))
 
+    def test_aba_da_categoria_tem_titulo_e_registra_nela(self):
+        def resultado(texto="", categoria=""):
+            return {"busca": {"texto": texto, "expressao": '"x"*' if texto else None, "categoria": categoria,
+                              "nota_min": None, "nota_max": None}, "itens": [], "tem_mais": False}
+        aba = pagina_inicial(resultado(categoria="filme"))
+        self.assertIn('<h1 class="titulo-busca">Filmes</h1>', aba)
+        self.assertIn('href="/registrar?categoria=filme">+ Registrar experiência', aba)
+        busca = pagina_inicial(resultado("cleo", "filme"))
+        self.assertIn('<h1 class="titulo-busca">Resultados</h1>', busca)
+        self.assertIn('href="/registrar?categoria=filme"', busca)
+        self.assertIn('href="/registrar">+ Registrar experiência', pagina_inicial(resultado("cleo")))
+
+    def test_formulario_abre_na_categoria_e_preserva_subcategoria(self):
+        self.assertIn('value="livro" data-exemplo', formulario("2026-09-24", "a" * 32, valores={"categoria": "livro"}))
+        self.assertRegex(formulario("2026-09-24", "a" * 32, valores={"categoria": "livro"}),
+                         r'<option value="livro"[^>]* selected>')
+        sub = formulario("2026-09-24", "a" * 32, valores={"categoria": "musica.rock"})
+        self.assertRegex(sub, r'<option value="musica.rock"[^>]* selected>Música · musica.rock</option>')
+        self.assertNotRegex(sub, r'<option value="restaurante"[^>]* selected>')
+
     def test_filtros_da_busca_mostram_todas_as_raizes(self):
         pagina = pagina_inicial()
         for categoria in CATEGORIAS.values():

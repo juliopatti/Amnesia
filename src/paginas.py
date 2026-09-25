@@ -133,7 +133,13 @@ def pagina_inicial(resultado=None, pagina=1, erro=""):
         mais = "+" if resultado["tem_mais"] else ""
         resgatadas = "lembrança resgatada" if quantidade == 1 and not mais else "lembranças resgatadas"
         contagem = "Você se esqueceu até de registrar…" if not itens else f"{quantidade}{mais} {resgatadas}"
-        topo = f'<div class="resultados"><h1 class="titulo-busca">Resultados</h1><p class="muted" role="status">{contagem}</p></div>'
+        # Só a aba de uma categoria, sem texto: a página é da categoria e já registra nela.
+        so_categoria = busca["categoria"] and not busca["texto"] and not erro
+        titulo = definicao_categoria(busca["categoria"])["nome"] if so_categoria else "Resultados"
+        registrar = f"/registrar?{urlencode({'categoria': busca['categoria']})}" if busca["categoria"] and not erro else "/registrar"
+        topo = (f'<div class="resultados"><div class="titulo-com-acao"><h1 class="titulo-busca">{escape(titulo)}</h1>'
+                f'<a class="botao principal" href="{escape(registrar)}">+ Registrar experiência</a></div>'
+                f'<p class="muted" role="status">{contagem}</p></div>')
     else:
         topo = """<section class="abertura"><p class="sobretitulo">SEU CADERNO DE EXPERIÊNCIAS</p>
         <h1>Foi bom? <span>Melhor anotar.</span></h1>
@@ -238,6 +244,11 @@ def campos_identificacao(valores):
     for slug, categoria in CATEGORIAS.items():
         html += (f'<option value="{slug}" data-exemplo="{escape(categoria["exemplo"])}" data-relato="{escape(categoria["relato"])}" '
                  f'{"selected" if valores["categoria"] == slug else ""}>{categoria["singular"]}</option>')
+    if valores["categoria"] not in CATEGORIAS and categoria_raiz(valores["categoria"]) in CATEGORIAS:
+        # Subcategoria ("musica.rock") ainda não listada: mantém o valor para não trocar a categoria sem aviso.
+        definicao = definicao_categoria(valores["categoria"])
+        html += (f'<option value="{escape(valores["categoria"])}" data-exemplo="{escape(definicao["exemplo"])}" '
+                 f'data-relato="{escape(definicao["relato"])}" selected>{definicao["singular"]} · {escape(valores["categoria"])}</option>')
     exemplo = escape(definicao_categoria(valores["categoria"])["exemplo"])
     return html + '</select>' + campo("nome", "Nome", valores, atributos=f'required maxlength="200" autocomplete="off" placeholder="{exemplo}"')
 

@@ -8,7 +8,7 @@ from uuid import uuid4
 from workers import Response, WorkerEntrypoint
 
 from armazenamento import ArmazenamentoD1, ArmazenamentoR2
-from dominio import (CATEGORIA_PADRAO, MAX_BUSCA, MAX_FOTO_BYTES, campos_da_categoria, categoria_raiz,
+from dominio import (CATEGORIA_PADRAO, MAX_BUSCA, MAX_FOTO_BYTES, campos_da_categoria, categoria_raiz, categoria_valida,
                      horario_local, preco_em_centavos)
 from paginas import (pagina_inicial, formulario, confirmacao, pagina_item, formulario_item,
                      formulario_experiencia, confirmar_exclusao, valores_item, valores_experiencia)
@@ -219,7 +219,10 @@ class Default(WorkerEntrypoint):
                         item = await banco.obter_item(identificador(consulta["item_id"][0]))
                         if not item:
                             raise LookupError("Esse item não foi encontrado.")
-                    return html(formulario(horario_local(instante)[:10], uuid4().hex, item))
+                    # Vindo da aba de uma categoria, o formulário já abre nela; valor estranho é ignorado.
+                    categoria = consulta.get("categoria", [""])[0]
+                    valores = {"categoria": categoria} if categoria_valida(categoria) else None
+                    return html(formulario(horario_local(instante)[:10], uuid4().hex, item, valores))
             elif caminho == "/registros":
                 valores = await ler_formulario(request)
                 if valores is None:

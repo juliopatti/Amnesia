@@ -113,6 +113,8 @@ form.busca { margin: 14px 0 2px; }
 .faixa label { margin: 0; font-weight: 450; font-size: .88rem; color: var(--suave); }
 .faixa select { min-width: 0; min-height: 44px; padding: 8px 32px 8px 12px; background-position: right 12px center; font-size: .92rem; }
 .resultados { margin: 4px 0 8px; }
+.titulo-com-acao { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 16px; margin-bottom: 10px; }
+.titulo-com-acao .botao { min-height: 44px; padding: 10px 16px; font-size: .92rem; }
 .titulo-busca { font-size: 1.7rem; margin: 0 0 2px; }
 mark { background: #f3e2a9; color: inherit; border-radius: 3px; padding: 0 2px; }
 
