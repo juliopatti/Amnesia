@@ -2,6 +2,8 @@
 
 from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal, InvalidOperation
+import re
+from urllib.parse import urlsplit
 
 
 FUSO_LOCAL = timezone(timedelta(hours=-3))
@@ -9,12 +11,17 @@ CAMPOS_CATEGORIA = {
     "lugar": ("endereco", "bairro", "cidade"),
     "produto": ("marca", "onde_comprei", "link"),
 }
+MAX_FOTO_BYTES = 768 * 1024
+MAX_FOTOS = 3
 
 
-def texto_limpo(valor, campo):
+def texto_limpo(valor, campo, limite=10000):
     if not isinstance(valor, str):
         raise ValueError(f"{campo} precisa ser texto.")
-    return valor.strip()
+    valor = valor.strip()
+    if len(valor) > limite:
+        raise ValueError(f"{campo}: use até {limite} caracteres.")
+    return valor
 
 
 def normalizar_nota(valor):
@@ -40,7 +47,7 @@ def horario_local(instante):
 
 
 def preparar_item(nome, categoria="lugar", descricao="", detalhes=None):
-    nome = texto_limpo(nome, "Nome")
+    nome = texto_limpo(nome, "Nome", 200)
     if not nome:
         raise ValueError("Dê um nome para conseguir lembrar depois.")
     if not isinstance(categoria, str) or categoria not in CAMPOS_CATEGORIA:
@@ -51,11 +58,20 @@ def preparar_item(nome, categoria="lugar", descricao="", detalhes=None):
         raise ValueError("Os detalhes precisam ser um objeto.")
     if any(campo not in CAMPOS_CATEGORIA[categoria] for campo in detalhes):
         raise ValueError("Há detalhes que não pertencem a essa categoria.")
+    detalhes = {campo: texto_limpo(valor, campo, 1000) for campo, valor in detalhes.items()}
+    if detalhes.get("link"):
+        try:
+            link = urlsplit(detalhes["link"])
+            valido = link.scheme in ("http", "https") and bool(link.hostname)
+        except ValueError:
+            valido = False
+        if not valido:
+            raise ValueError("O link precisa começar com http:// ou https:// e ter um endereço.")
     return {
         "nome": nome,
         "categoria": categoria,
         "descricao": texto_limpo(descricao, "Descrição"),
-        "detalhes": {campo: texto_limpo(valor, campo) for campo, valor in detalhes.items()},
+        "detalhes": detalhes,
     }
 
 
@@ -63,7 +79,7 @@ def preparar_experiencia(
     item_id, *, hoje, data=None, nota=None, texto="", pedido="",
     preco_centavos=None, repetiria=None, tags=(),
 ):
-    if type(item_id) is not int or item_id <= 0:
+    if item_id is not None and (type(item_id) is not int or item_id <= 0):
         raise ValueError("Informe um item válido.")
     data = hoje if data is None or data == "" else data
     try:
@@ -78,9 +94,11 @@ def preparar_experiencia(
         raise ValueError("Escolha sim, não ou deixe sem resposta.")
     if not isinstance(tags, (list, tuple)):
         raise ValueError("Informe as tags como uma lista.")
+    if len(tags) > 20:
+        raise ValueError("Use no máximo 20 tags.")
     tags_limpas = []
     for tag in tags:
-        tag = texto_limpo(tag, "Tag").casefold()
+        tag = texto_limpo(tag, "Tag", 50).casefold()
         if tag and tag not in tags_limpas:
             tags_limpas.append(tag)
     return {
@@ -90,3 +108,28 @@ def preparar_experiencia(
         "repetiria": None if repetiria is None else int(repetiria),
         "tags": tags_limpas,
     }
+
+
+def validar_chave(chave):
+    if not isinstance(chave, str) or not re.fullmatch(r"[a-f0-9]{32}", chave):
+        raise ValueError("O formulário expirou. Abra um novo registro.")
+    return chave
+
+
+def preco_em_centavos(valor):
+    valor = texto_limpo(valor, "Preço", 20)
+    if not valor:
+        return None
+    if not re.fullmatch(r"\d{1,8}(?:[.,]\d{1,2})?", valor):
+        raise ValueError("Informe o preço como 12,50, sem separador de milhar.")
+    return int(Decimal(valor.replace(",", ".")) * 100)
+
+
+def validar_foto(conteudo, tipo):
+    if tipo != "image/jpeg":
+        raise ValueError("A foto precisa ser convertida para JPEG no navegador.")
+    if not isinstance(conteudo, bytes) or not 4 <= len(conteudo) <= MAX_FOTO_BYTES:
+        raise ValueError("A foto precisa ter até 768 KiB após a redução.")
+    # Verificação de formato; a decodificação e a redução acontecem no navegador.
+    if not conteudo.startswith(b"\xff\xd8\xff") or not conteudo.endswith(b"\xff\xd9"):
+        raise ValueError("Este arquivo não parece ser uma foto JPEG.")

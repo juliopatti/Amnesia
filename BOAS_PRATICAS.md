@@ -39,13 +39,13 @@ Um bug corrigido deve ganhar um teste de regressão quando for reproduzível.
 | Camada | Verificação | Situação |
 | --- | --- | --- |
 | Unidade | Notas, valores ausentes, datas, textos, categorias e entradas inválidas | Automatizada offline |
-| Serviços | Casos de uso com dublês sem rede e dependências injetadas | Base automatizada; ampliar com os cadastros |
-| Banco | Restrições, relacionamentos, migrações e FTS em SQLite em memória | Esquema inicial automatizado |
-| Runtime | Migração D1 local, binding real e respostas HTTP no Python Worker | Verificação local realizada; ainda fora do CI |
-| Integração de escrita | Atomicidade, atualização da FTS, repetição de envio e falhas de upload | Implementar junto do cadastro e fotos |
-| Interface e ponta a ponta | Cadastrar, buscar e abrir a linha do tempo pelo navegador | Implementar junto das respectivas telas |
-| Acessibilidade | Rótulos, teclado, foco, contraste, mensagens de erro e seleção das estrelas | Verificar ao implementar os formulários |
-| Segurança | Escape de HTML, SQL parametrizado, proteção de escritas, uploads e rotas privadas | SQL/escape iniciais testados; ampliar com rotas e Access |
+| Serviços | Casos de uso com dublês sem rede e dependências injetadas | Cadastro e fotos automatizados |
+| Banco | Restrições, relacionamentos, migrações e FTS em SQLite em memória | Migrações e sincronização automatizadas |
+| Runtime | Migração D1 local, bindings reais e respostas HTTP no Python Worker | Coberto pelo Playwright com D1 e R2 locais |
+| Integração de escrita | Atomicidade, atualização da FTS, repetição de envio e falhas de upload | Automatizada, incluindo rollback e reenvio concorrente |
+| Interface e ponta a ponta | Cadastrar, buscar e abrir a linha do tempo pelo navegador | Cadastro e fotos cobertos; busca e timeline nos próximos incrementos |
+| Acessibilidade | Rótulos, teclado, foco, contraste, mensagens de erro e seleção das estrelas | Rótulos/teclado testados; revisão visual realizada; auditoria completa pendente |
+| Segurança | Escape de HTML, SQL parametrizado, proteção de escritas, uploads e rotas privadas | Escape, SQL, origem e upload cobertos; Access na publicação |
 | Desempenho e usabilidade | Registro no celular em menos de 30 s, imagens reduzidas e busca com volume representativo | Medir quando os fluxos estiverem completos |
 | Publicação e recuperação | Login permitido/negado, fotos protegidas e recuperação dos dados | Validar antes da entrega publicada |
 
@@ -59,12 +59,13 @@ PYTHONPATH=src python3 -m unittest discover -s tests -v
 ```
 
 O workflow `.github/workflows/testes.yml` executa essa suíte em Python 3.12 e 3.14
-a cada push. Os testes não fazem chamadas de rede; a preparação do runner baixa
-as ferramentas necessárias. Não precisa de segredos nem de conta Cloudflare.
-O workflow não faz deploy.
+a cada push, além dos testes Playwright com Worker, D1 e R2 locais. Os testes de
+domínio não fazem chamadas de rede; o navegador acessa apenas o servidor local.
+A preparação do runner baixa as ferramentas. Não precisa de segredos nem de
+conta Cloudflare. O workflow não faz deploy.
 
 Após enviar o código ao GitHub, abra a aba **Actions**, selecione **Testes** e confira
-os dois resultados. Em caso de falha, abra o job e o passo de execução dos testes
+os três resultados. Em caso de falha, abra o job e o passo de execução dos testes
 para ver qual caso falhou. A execução hospedada só será confirmada após esse envio.
 
 ## Documentação e dados

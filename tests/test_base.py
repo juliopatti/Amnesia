@@ -28,7 +28,7 @@ class TestServicos(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(linhas, [{"nome": "Bar d'Água"}])
 
     def test_html_escapa_dados(self):
-        pagina = pagina_inicial([{"nome": "<script>alert(1)</script>"}])
+        pagina = pagina_inicial([{"slug": "lugar", "nome": "<script>alert(1)</script>"}])
         self.assertNotIn("<script>", pagina)
         self.assertIn("&lt;script&gt;", pagina)
 

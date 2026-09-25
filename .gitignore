@@ -13,3 +13,5 @@ python_modules/
 __pycache__/
 *.py[cod]
 .DS_Store
+test-results/
+playwright-report/

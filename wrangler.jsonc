@@ -7,6 +7,14 @@
   // Publicação e Access serão configurados no incremento 5.
   "workers_dev": false,
   "preview_urls": false,
+  "assets": {
+    "directory": "./static",
+    "binding": "ASSETS",
+    "run_worker_first": true
+  },
+  "r2_buckets": [
+    { "binding": "FOTOS", "bucket_name": "amnesia-fotos" }
+  ],
   "d1_databases": [
     {
       "binding": "DB",

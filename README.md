@@ -3,192 +3,240 @@
 Registro pessoal de lugares, produtos e experiências. Aplicativo privado, para uma
 pessoa; repositório de código público durante a avaliação da disciplina.
 
-As convenções de desenvolvimento, documentação e testes estão em
-[Boas práticas](BOAS_PRATICAS.md). Nesta fase, os commits vão direto para `main`.
+[Boas práticas](BOAS_PRATICAS.md) descreve as convenções de código, documentação e
+testes. Nesta fase, os commits vão direto para `main`.
 
-**Incremento 1:** esquema D1 + FTS5, regras de domínio, adaptador D1 de leitura,
-testes offline e uma página inicial que confirma a conexão com o banco local.
-Ainda não há formulário, upload, busca na interface ou publicação.
+## O que funciona agora — incremento 2
 
-## O que já está decidido
+- Criar lugar ou produto; só o nome exige digitação.
+- Guardar só o item ou já registrar uma experiência na mesma tela.
+- Registrar outras experiências em um item existente.
+- Escolher notas de **0 a 5 em passos de meia estrela**, por toque ou teclado.
+  “Sem nota” é diferente de zero.
+- Escrever a descrição do item e o relato de cada experiência separadamente.
+- Informar data, pedido/provado, preço, tags e “voltaria/compraria de novo?”.
+- Anexar até 3 fotos por experiência. O navegador reduz para até 1600 pixels no
+  maior lado e 768 KiB por foto, converte para JPEG e remove os metadados.
+- Consultar os itens por categoria e registrar outra experiência a partir deles.
+- Manter o índice FTS atualizado na mesma transação do cadastro.
 
-- Item: nome obrigatório, descrição livre opcional e detalhes por categoria.
-- Experiência: data, relato livre, pedido/provado, nota, preço, tags e “repetiria?”.
-- Notas: **0, 0,5, 1, …, 4,5, 5**. Sem nota é `NULL`, diferente de zero.
-- No incremento 2, a interface terá estrelas clicáveis, seleção de meia estrela,
-  opção explícita de zero e opção de limpar a avaliação.
-- Relato da experiência e descrição do item são textos independentes.
-- Preços em centavos de reais. Horários ISO 8601 com offset fixo `-03:00`.
-- `categorias` + JSON em `itens.detalhes`: novas categorias não exigem novas tabelas.
-  Também será necessário definir seus campos em `CAMPOS_CATEGORIA` e no formulário.
-- A FTS tem um documento por item (`rowid = itens.id`) e inclui descrição, nome,
-  localização, detalhes, relatos, pedidos e tags.
-- O índice ainda está vazio. A escrita dos registros e a sincronização transacional
-  da FTS entram juntas no incremento 2; a interface de busca entra no 3.
+A busca na interface é o incremento 3. A linha do tempo completa, média e resumo
+“voltaria?” são o 4. A página atual de experiência confirma o registro e permite
+anexar fotos. A publicação protegida por Access é o incremento 5.
 
-## Conta Cloudflare
+## Rodar no seu computador (Linux)
 
-O desenvolvimento local deste incremento não exige login nem credenciais.
-Na publicação, será possível usar uma conta existente no
-[painel Cloudflare](https://dash.cloudflare.com/), criando recursos próprios para
-o amnesia. D1 e R2 usam bindings; não são necessárias integrações com Telegram,
-Google Drive, Google Sheets ou provedores de IA.
+Execute os blocos **um por vez**, no terminal aberto na pasta que contém este
+README. Se um comando falhar, pare nesse passo e copie a mensagem de erro sem
+segredos. Nenhum destes passos altera sua conta Cloudflare.
 
-## Passo a passo: rodar no seu computador (Linux)
-
-Execute os blocos abaixo **um por vez**, no terminal. Se algum comando falhar,
-pare nesse passo e copie a mensagem de erro, sem incluir segredos.
-
-### 1. Entre na pasta
-
-Abra a pasta do projeto no seu editor e use a opção de abrir um terminal nessa
-pasta. Confirme que `README.md` e `pyproject.toml` aparecem ao executar `ls`.
-
-### 2. Execute os testes offline
+### 1. Confira as ferramentas
 
 ```bash
-PYTHONPATH=src python3 -m unittest discover -s tests -v
-```
-
-Resultado esperado: a última linha diz `OK`. Este comando não instala pacotes,
-não acessa sua conta e não precisa de internet. Usa Python 3.12 ou mais recente.
-
-### 3. Confira Node e uv
-
-```bash
+python3 --version
 node --version
-```
-
-O ambiente validado usa Node 22.23.2. Node é usado pela ferramenta da Cloudflare;
-o backend do app continua sendo Python e não há build do frontend.
-
-```bash
 uv --version
 ```
 
-Se aparecer `command not found`, instale o uv pelo instalador oficial:
+Python 3.12 ou mais recente serve para os testes offline. O ambiente validado usa
+Node 22.23.2. Node executa as ferramentas de desenvolvimento: o backend continua
+em Python e o frontend não tem build.
+
+Se aparecer `uv: command not found`, instale pelo instalador oficial:
 
 ```bash
 curl -LsSf https://astral.sh/uv/install.sh -o /tmp/amnesia-instalar-uv.sh
 sh /tmp/amnesia-instalar-uv.sh
 ```
 
-Feche e abra o terminal, entre novamente na pasta do passo 1 e repita
-`uv --version`. O uv gerencia o ambiente Python do projeto; não é uma dependência
-do app publicado. [Instalação oficial](https://docs.astral.sh/uv/getting-started/installation/).
+Reabra o terminal na pasta do projeto e confira `uv --version` novamente.
+[Instalação oficial do uv](https://docs.astral.sh/uv/getting-started/installation/).
 
-### 4. Prepare as ferramentas do projeto
+### 2. Instale as ferramentas do projeto
 
 ```bash
 uv sync --locked
+npm ci
 ```
 
-Isso instala as ferramentas oficiais `workers-py` (comando `pywrangler`) e
-`workers-runtime-sdk`, junto das dependências delas, em `.venv/`.
-As versões Python estão registradas em `uv.lock`. Não precisa ativar o ambiente
-manualmente: os próximos comandos usam `uv run`. Ao iniciar o Worker, o pywrangler
-também pode criar `.venv-workers/` e baixar a versão de Python correspondente ao
-runtime da Cloudflare. Isso é automático e não substitui o Python do sistema.
+O uv cria `.venv/`. O pywrangler pode criar `.venv-workers/` e baixar o Python do
+runtime Cloudflare automaticamente. Isso não substitui o Python do sistema.
+O npm instala Wrangler e Playwright nas versões do `package-lock.json`.
+Não é necessário ativar ambientes virtuais manualmente.
 
-### 5. Crie as tabelas no banco local
+A aplicação usa a SDK oficial de Workers e uma cópia local do **htmx 2.0.8**
+([licença](static/htmx.LICENSE)). Playwright é exclusivo dos testes de navegador;
+Wrangler é a ferramenta oficial de desenvolvimento. Não há ORM, framework web,
+biblioteca de processamento de imagens ou dependência de CDN.
+
+### 3. Execute os testes offline
+
+```bash
+PYTHONPATH=src python3 -m unittest discover -s tests -v
+```
+
+Resultado esperado: **34 testes e `OK`**. Esta suíte usa apenas a stdlib,
+não faz chamadas de rede e pode rodar mesmo sem as instalações do passo 2.
+
+### 4. Prepare ou atualize o banco local
 
 ```bash
 uv run pywrangler d1 migrations apply amnesia --local
 ```
 
-Se pedir confirmação para aplicar a migração, responda `y` e pressione Enter.
-A ferramenta pode baixar o Wrangler no primeiro uso. Resultado esperado:
-`0001_inicial.sql` aplicada com sucesso.
+Responda `y` se houver confirmação. Em uma instalação nova, as migrações
+`0001_inicial.sql` e `0002_cadastro.sql` serão aplicadas. Quem já executou o
+incremento 1 precisa aplicar apenas a nova migração; o comando detecta isso.
 
-**`--local` significa no seu computador.** Os dados ficam em `.wrangler/state/`.
-Não precisa criar D1 no painel nem fazer login. O identificador com zeros em
-`wrangler.jsonc` é proposital, usado só nesta fase local.
-Você pode repetir o comando: migrações já aplicadas não são reaplicadas.
+`--local` guarda o banco em `.wrangler/state/`. O identificador com zeros em
+`wrangler.jsonc` é proposital para esta fase. Não precisa criar D1 no painel.
+O R2 local também é simulado pela ferramenta, sem conta ou assinatura.
 
-### 6. Ligue o app
+### 5. Ligue o app
 
 ```bash
 uv run pywrangler dev
 ```
 
-Espere aparecer `Ready on http://localhost:8787` (ou o endereço informado pela
-ferramenta). A primeira execução pode baixar o runtime Python. Deixe esse terminal
-aberto e visite <http://localhost:8787> no navegador do computador.
+Espere aparecer `Ready on http://localhost:8787` ou o endereço informado pela
+ferramenta. Abra <http://localhost:8787> no navegador do computador e mantenha o
+terminal aberto. Pressione **Ctrl+C** quando quiser desligar. Os dados permanecem.
 
-Você deve ver **amnesia.**, a frase “Você já esteve aqui. Óbvio que não lembra.”
-e as categorias Lugares e Produtos. A página é apenas a base visual deste incremento.
+Se a porta estiver ocupada, use `uv run pywrangler dev --port 8788` e abra a porta
+8788. Se o app mostrar erro de banco, confira o passo 4 e reinicie o servidor.
+A instalação inicial das ferramentas e do runtime precisa de internet.
 
-Abra também <http://localhost:8787/saude>. Deve aparecer um JSON com
-`"estado":"ok"`, as duas categorias e contagens zeradas.
+### 6. Experimente o cadastro
 
-Para desligar, volte ao terminal e pressione **Ctrl+C**. Seus dados locais permanecem.
+1. Clique em **Registrar experiência**.
+2. Digite um nome, por exemplo “Bar de teste”.
+3. Toque na metade esquerda de uma estrela para meia estrela, ou na direita para
+   a estrela inteira. **0 estrelas** e **Sem nota** têm opções próprias.
+4. Escreva “Coxinha fria” no campo **Como foi?**.
+5. Se quiser, abra **Mais detalhes** ou escolha uma foto.
+6. Clique em **Guardar experiência**. Deve aparecer “Pode esquecer. A gente anotou.”
+7. Clique em **Outra experiência aqui** para registrar uma segunda visita no mesmo item.
 
-### Se algo der errado
+Para cadastrar apenas um item, preencha o nome e use **Só guardar o item, sem
+experiência**. A descrição do item fica em **Mais detalhes**. Fotos pertencem às
+experiências, por isso exigem o botão **Guardar experiência**.
 
-- **“Base indisponível” / resposta 503:** execute o passo 5 na mesma pasta e reinicie
-  o comando do passo 6.
-- **“uv: command not found”:** reabra o terminal após instalar uv; repita o passo 3.
-- **Porta 8787 ocupada:** rode `uv run pywrangler dev --port 8788` e abra a porta 8788.
-- **Erro ao baixar pacotes/runtime:** a instalação inicial precisa de internet;
-  os testes do passo 2 continuam funcionando offline.
+Se a foto falhar, o texto já estará salvo. A tela oferece **Tentar fotos novamente**
+ou um link para continuar com o registro salvo. Também é possível anexar fotos na
+página de confirmação posteriormente. Uma foto que o navegador não consiga abrir
+(por exemplo, certos arquivos HEIC) deve ser exportada para JPEG, PNG ou WebP.
 
-Não execute `deploy` nem substitua o identificador fictício ainda. A publicação
-protegida pelo Access será feita no incremento 5. `workers.dev` e previews estão
-desabilitados na configuração atual.
+Sem JavaScript, cadastro e seleção de nota continuam funcionando; a redução e o
+envio de fotos precisam de JavaScript. Os detalhes das duas categorias ficam
+visíveis nesse modo, mas o servidor usa somente os da categoria selecionada.
 
-## Organização e testes
+## Testes de navegador e integração real
+
+Depois dos passos 1 e 2, instale o navegador de testes uma vez:
+
+```bash
+npx playwright install chromium
+```
+
+Se o Playwright indicar bibliotecas do sistema ausentes, execute
+`npx playwright install --with-deps chromium`; essa variante pode pedir sua senha
+para instalar pacotes do sistema.
+
+Prepare o banco isolado e execute os testes:
+
+```bash
+uv run pywrangler d1 migrations apply amnesia --local --persist-to .wrangler/test-state
+npm run test:e2e
+```
+
+O Playwright inicia e encerra o Worker na porta **8790**, usando D1 e R2 locais em
+`.wrangler/test-state/`. A porta precisa estar livre. Seus registros de desenvolvimento
+em `.wrangler/state/` não são usados. Os dados fictícios podem permanecer entre
+execuções; os testes geram nomes únicos.
+
+Para usar o Chrome já instalado no Linux, em vez do Chromium baixado:
+
+```bash
+PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/google-chrome npm run test:e2e
+```
+
+Os 6 cenários verificam cadastro, meia estrela/zero/ausência, teclado, produto,
+campos preservados após erro, htmx, cadastro sem JavaScript, escape de HTML, redução
+real de imagem, falha e repetição de upload, leitura da foto no R2, proteção de
+origem, reenvio concorrente e layout mobile sem rolagem horizontal.
+
+Em caso de falha, capturas e traces ficam em `test-results/`, ignorado pelo Git.
+Esses arquivos podem conter o conteúdo usado no teste; use somente dados fictícios.
+
+## Integração contínua
+
+A aba [Actions → Testes](https://github.com/juliopatti/Amnesia/actions/workflows/testes.yml)
+mostra as execuções de cada push. O workflow configura:
+
+- Suíte offline em Python 3.12 e 3.14.
+- Testes de navegador com Chromium, Python Worker, D1 e R2 locais.
+
+Não exige segredos Cloudflare e não realiza deploy. As dependências são baixadas
+na preparação do runner; os testes do app usam apenas recursos locais.
+
+Validação local do incremento 2: **34 testes offline nas duas versões de Python e
+6 cenários de navegador aprovados**. O teste automatizado de envio rápido não
+substitui cronometrar uma pessoa usando um celular real; essa validação permanece
+para a entrega publicada. Também não houve teste em Safari/iPhone nesta etapa.
+
+## Organização e decisões técnicas
 
 | Arquivo | Responsabilidade |
 | --- | --- |
-| `src/dominio.py` | Funções puras, validação, normalização de notas e datas |
-| `src/servicos.py` | Caso de uso com armazenamento recebido por argumento |
-| `src/armazenamento.py` | Consultas parametrizadas e conversão do binding D1 |
-| `src/worker.py` | Rotas `/` e `/saude`; respostas HTTP |
-| `src/paginas.py` | HTML com escape de conteúdo dinâmico |
-| `migrations/0001_inicial.sql` | Tabelas, índices e FTS5 |
-| `tests/` | Domínio, dublês de armazenamento/binding e SQLite em memória |
+| `src/dominio.py` | Validações e normalizações puras |
+| `src/servicos.py` | Criar item, registrar experiência e anexar foto; dependências injetadas |
+| `src/armazenamento.py` | SQL parametrizado, transações D1, projeção FTS e adaptador R2 |
+| `src/worker.py` | Rotas HTTP, limites de corpo e checagem de origem |
+| `src/paginas.py` | HTML com escape de valores |
+| `static/` | CSS, htmx local e JavaScript de formulário/fotos |
+| `migrations/` | Evolução do esquema sem reescrever migrações anteriores |
+| `tests/` | Regras, serviços com dublês, SQL real em SQLite e testes de navegador |
 
-Os testes cobrem todas as meias estrelas, zero versus ausência, entradas inválidas,
-texto livre, data em `-03:00` na virada do dia, SQL parametrizado, chaves estrangeiras,
-JSON, média que inclui zero, nova categoria e FTS por palavras, prefixos e acentos.
-SQLite em memória ajuda a verificar SQL; não substitui testar o binding no runtime.
+O item contém nome, descrição e detalhes em JSON por categoria. Novas categorias
+exigem cadastro na tabela `categorias`, definição em `CAMPOS_CATEGORIA` e campos no
+formulário, sem reescrever as tabelas. Experiências têm data, nota opcional, relato,
+pedido, preço em centavos de reais, resposta opcional e tags.
 
-A suíte offline também está configurada para rodar a cada push no GitHub, em
-Python 3.12 e 3.14. Confira o resultado na aba **Actions → Testes** após enviar
-o repositório. A [primeira execução no GitHub](https://github.com/juliopatti/Amnesia/actions/runs/36088361619)
-foi aprovada nas duas versões. O workflow não realiza deploy.
+As chaves de envio evitam duplicação ao repetir um formulário: **o primeiro envio
+confirmado prevalece**. Para registrar outra experiência, abra um novo formulário.
+A gravação do item, experiência, tags e documento FTS ocorre em um único
+`D1.batch`. Se uma etapa falha, o lote é desfeito. A FTS agrega nome, descrição,
+localização, detalhes, relatos, pedidos e tags, com um documento por item.
 
-Validação realizada neste incremento: 18 testes offline aprovados, migração aplicada
-no D1 local, `/` e `/saude` com HTTP 200, caminho inexistente com 404 e POST com 405.
-Testado com pywrangler 1.17.4, SDK 1.9.0 e Wrangler 4.139.0. A SDK converte os
-resultados D1 para estruturas Python; o adaptador e seu dublê usam esse contrato.
-`pylock.toml` registra a SDK empacotada pelo pywrangler para o runtime.
+Fotos usam uma segunda requisição. R2 e D1 não têm transação conjunta: se a gravação
+dos metadados falha, o serviço tenta remover o objeto enviado. Falha simultânea de
+D1 e R2 pode deixar objeto órfão; reconciliação automática ainda não está implementada.
+O servidor limita tamanho, quantidade e verifica MIME/assinatura JPEG. Não é uma
+validação completa por decodificação de imagem no servidor.
 
-Stdlib usada no runtime: `datetime`, `decimal`, `html` e `urllib.parse`.
-Elas estão contempladas na documentação de compatibilidade de Python Workers;
-`decimal` usa a implementação C compilada para WebAssembly. Não usamos `zoneinfo`.
-`sqlite3`, `pathlib` e `unittest` são usados apenas nos testes locais.
-[Referência de compatibilidade](https://developers.cloudflare.com/workers/languages/python/stdlib/).
+As escritas exigem `Origin` igual ao site e rejeitam requisições marcadas como
+cross-site. SQL usa parâmetros, HTML usa escape e respostas incluem CSP e
+`nosniff`. Fotos são servidas pelo Worker; nenhum bucket público é necessário.
+Isso não substitui o Access: a autenticação de produção será configurada antes do deploy.
 
-Não há dependência de aplicação adicional. A SDK e o pywrangler são as ferramentas
-oficiais descritas nos [exemplos de Python Workers](https://github.com/cloudflare/python-workers-examples/tree/main/hello).
+Stdlib usada no runtime: `datetime`, `decimal`, `html`, `json`, `re`, `urllib.parse`
+e `uuid`. Compatibilidade conferida na [documentação de Python Workers](https://developers.cloudflare.com/workers/languages/python/stdlib/)
+e exercitada no runtime local. Horários usam offset fixo `-03:00`, sem `zoneinfo`.
+SQLite e dublês ajudam a testar SQL e falhas, mas não substituem a integração real.
 
 ## Segredos e publicação futura
 
-`.env`, `.dev.vars`, caches e ambientes virtuais estão ignorados pelo Git.
-`.env.example` contém apenas orientações; nenhum segredo é necessário nesta etapa.
-D1/R2 serão acessados por bindings, não pelas credenciais do seu outro projeto.
-Segredos futuros de produção serão cadastrados na Cloudflare, nunca no repositório.
+`.env`, `.dev.vars`, bancos locais, fotos locais, ambientes e resultados de testes
+estão ignorados pelo Git. `.env.example` tem apenas orientações. Não é necessário
+copiar credenciais de outro projeto. Dados reais não devem entrar no repositório público.
 
-No incremento 5, o roteiro será: autenticar na conta, criar D1 e R2 próprios do
-amnesia, aplicar migrações remotas, configurar Access somente para seu e-mail e
-publicar/testar as rotas protegidas. Não é necessário modificar o outro projeto.
+No incremento 5, usaremos sua conta Cloudflare para criar recursos próprios do
+amnesia, aplicar as migrações remotas, configurar Access apenas para seu e-mail e
+publicar. `workers.dev` e previews permanecem desabilitados nesta fase.
 
 ## Próximos incrementos
 
-2. Cadastro mobile de item e experiência, estrelas de meia em meia, textos livres,
-   foto opcional reduzida no navegador e sincronização da FTS.
-3. Busca única, categoria e faixa de nota média.
+3. Busca única, filtro de categoria e faixa de nota média.
 4. Página do item com linha do tempo, média e “voltaria/compraria de novo?”.
 5. Deploy, Access e teste de registro em menos de 30 segundos no celular.
 
