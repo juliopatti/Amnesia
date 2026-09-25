@@ -1,0 +1,15 @@
+.env
+.env.*
+!.env.example
+.dev.vars
+.dev.vars.*
+.venv/
+.venv-workers/
+.wrangler/
+.uv-cache/
+.npm-cache/
+node_modules/
+python_modules/
+__pycache__/
+*.py[cod]
+.DS_Store
