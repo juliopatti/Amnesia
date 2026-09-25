@@ -39,11 +39,11 @@ Um bug corrigido deve ganhar um teste de regressão quando for reproduzível.
 | Camada | Verificação | Situação |
 | --- | --- | --- |
 | Unidade | Notas, valores ausentes, datas, textos, categorias e entradas inválidas | Automatizada offline |
-| Serviços | Casos de uso com dublês sem rede e dependências injetadas | Cadastro, fotos e busca automatizados |
-| Banco | Restrições, relacionamentos, migrações e FTS em SQLite em memória | Migrações, sincronização e consultas de busca automatizadas |
+| Serviços | Casos de uso com dublês sem rede e dependências injetadas | Cadastro, fotos, busca, edição e exclusão automatizados |
+| Banco | Restrições, relacionamentos, migrações e FTS em SQLite em memória | Migrações, sincronização (inclusive em edição e exclusão) e consultas de busca automatizadas |
 | Runtime | Migração D1 local, bindings reais e respostas HTTP no Python Worker | Coberto pelo Playwright com D1 e R2 locais |
-| Integração de escrita | Atomicidade, atualização da FTS, repetição de envio e falhas de upload | Automatizada, incluindo rollback e reenvio concorrente |
-| Interface e ponta a ponta | Cadastrar, buscar e abrir a linha do tempo pelo navegador | Cadastro, fotos e busca cobertos; timeline no próximo incremento |
+| Integração de escrita | Atomicidade, atualização da FTS, repetição de envio e falhas de upload | Automatizada, incluindo rollback de cadastro, edição e exclusão e reenvio concorrente |
+| Interface e ponta a ponta | Cadastrar, buscar e abrir a linha do tempo pelo navegador | Cadastro, fotos, busca, edição e exclusão cobertos; timeline no próximo incremento |
 | Acessibilidade | Rótulos, teclado, foco, contraste, mensagens de erro e seleção das estrelas | Rótulos/teclado testados; revisão visual realizada; auditoria completa pendente |
 | Segurança | Escape de HTML, SQL parametrizado, proteção de escritas, uploads e rotas privadas | Escape (inclusive trechos da busca), SQL, sintaxe FTS, origem e upload cobertos; Access na publicação |
 | Desempenho e usabilidade | Registro no celular em menos de 30 s, imagens reduzidas e busca com volume representativo | Medir quando os fluxos estiverem completos |

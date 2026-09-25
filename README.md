@@ -6,7 +6,7 @@ pessoa; repositório de código público durante a avaliação da disciplina.
 [Boas práticas](BOAS_PRATICAS.md) descreve as convenções de código, documentação e
 testes. Nesta fase, os commits vão direto para `main`.
 
-## O que funciona agora — incremento 3
+## O que funciona agora — incremento 3 e edição
 
 - Criar lugar ou produto; só o nome exige digitação.
 - Guardar só o item ou já registrar uma experiência na mesma tela.
@@ -24,9 +24,13 @@ testes. Nesta fase, os commits vão direto para `main`.
   vez, mesmo com várias experiências que mencionem o termo; o trecho encontrado fica
   destacado.
 - Filtrar por categoria e por faixa de **nota média do item** (0 a 5, meia em meia).
+- **Editar** o item (nome, categoria, descrição e detalhes) e cada experiência
+  (nota, relato, data, pedido, preço, tags e “voltaria?”). A busca acompanha.
+- **Excluir** uma experiência ou uma foto, sempre com uma tela de confirmação.
 
-A linha do tempo completa e o resumo “voltaria?” são o incremento 4. A página atual de experiência confirma o registro e permite
-anexar fotos. A publicação protegida por Access é o incremento 5.
+Tocar no nome de um item abre a página dele, com uma lista simples das experiências.
+A linha do tempo completa, com média e resumo “voltaria?”, é o incremento 4.
+A publicação protegida por Access é o incremento 5.
 
 ## Rodar no seu computador (Linux)
 
@@ -79,7 +83,7 @@ biblioteca de processamento de imagens ou dependência de CDN.
 PYTHONPATH=src python3 -m unittest discover -s tests -v
 ```
 
-Resultado esperado: **50 testes e `OK`**. Esta suíte usa apenas a stdlib,
+Resultado esperado: **62 testes e `OK`**. Esta suíte usa apenas a stdlib,
 não faz chamadas de rede e pode rodar mesmo sem as instalações do passo 2.
 
 ### 4. Prepare ou atualize o banco local
@@ -110,7 +114,7 @@ Se a porta estiver ocupada, use `uv run pywrangler dev --port 8788` e abra a por
 8788. Se o app mostrar erro de banco, confira o passo 4 e reinicie o servidor.
 A instalação inicial das ferramentas e do runtime precisa de internet.
 
-### 6. Experimente o cadastro e a busca
+### 6. Experimente o cadastro, a busca e a edição
 
 1. Clique em **Registrar experiência**.
 2. Digite um nome, por exemplo “Bar de teste”.
@@ -132,6 +136,17 @@ Depois, na página inicial:
 4. Teste entradas estranhas, como `"NOT (` ou `!!!`: a busca responde com uma
    mensagem, nunca com erro. **Limpar busca** volta à lista completa.
 
+Para corrigir algo:
+
+1. Na lista, toque no **nome** do item. A página mostra o item e as experiências.
+2. **Editar item** muda nome, categoria, descrição e detalhes.
+3. Toque numa experiência e use **Editar experiência** ou **Excluir**.
+4. Sob cada foto há **Remover foto**. Nada é apagado sem a tela “Excluir de vez”.
+5. Busque pelo nome antigo e pelo novo: só o novo deve aparecer.
+
+Se apagar a data ao editar, a original é mantida. Ainda não é possível excluir um
+item inteiro nem mover uma experiência para outro item.
+
 Para cadastrar apenas um item, preencha o nome e use **Só guardar o item, sem
 experiência**. A descrição do item fica em **Mais detalhes**. Fotos pertencem às
 experiências, por isso exigem o botão **Guardar experiência**.
@@ -141,7 +156,7 @@ ou um link para continuar com o registro salvo. Também é possível anexar foto
 página de confirmação posteriormente. Uma foto que o navegador não consiga abrir
 (por exemplo, certos arquivos HEIC) deve ser exportada para JPEG, PNG ou WebP.
 
-Sem JavaScript, cadastro e seleção de nota continuam funcionando; a redução e o
+Sem JavaScript, cadastro, edição, exclusão e seleção de nota continuam funcionando; a redução e o
 envio de fotos precisam de JavaScript. Os detalhes das duas categorias ficam
 visíveis nesse modo, mas o servidor usa somente os da categoria selecionada.
 
@@ -175,11 +190,12 @@ Para usar o Chrome já instalado no Linux, em vez do Chromium baixado:
 PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/google-chrome npm run test:e2e
 ```
 
-Os 7 cenários verificam cadastro, meia estrela/zero/ausência, teclado, produto,
+Os 8 cenários verificam cadastro, meia estrela/zero/ausência, teclado, produto,
 campos preservados após erro, htmx, cadastro sem JavaScript, escape de HTML, redução
 real de imagem, falha e repetição de upload, leitura da foto no R2, proteção de
 origem, reenvio concorrente, busca (relato, acentos, filtros, htmx, entradas especiais
-e estados vazios) e layout mobile sem rolagem horizontal.
+e estados vazios), edição com e sem JavaScript refletida na busca, exclusão de
+experiência e de foto com confirmação e layout mobile sem rolagem horizontal.
 
 Em caso de falha, capturas e traces ficam em `test-results/`, ignorado pelo Git.
 Esses arquivos podem conter o conteúdo usado no teste; use somente dados fictícios.
@@ -195,8 +211,8 @@ mostra as execuções de cada push. O workflow configura:
 Não exige segredos Cloudflare e não realiza deploy. As dependências são baixadas
 na preparação do runner; os testes do app usam apenas recursos locais.
 
-Validação local do incremento 3: **50 testes offline e 7 cenários de navegador
-aprovados**. O teste automatizado de envio rápido não
+Validação local do incremento 3 e da edição: **62 testes offline e 8 cenários de
+navegador aprovados**. O teste automatizado de envio rápido não
 substitui cronometrar uma pessoa usando um celular real; essa validação permanece
 para a entrega publicada. Também não houve teste em Safari/iPhone nesta etapa.
 
@@ -205,7 +221,7 @@ para a entrega publicada. Também não houve teste em Safari/iPhone nesta etapa.
 | Arquivo | Responsabilidade |
 | --- | --- |
 | `src/dominio.py` | Validações, normalizações e montagem segura da consulta de busca |
-| `src/servicos.py` | Buscar, criar item, registrar experiência e anexar foto; dependências injetadas |
+| `src/servicos.py` | Buscar, criar, editar e excluir; dependências injetadas |
 | `src/armazenamento.py` | SQL parametrizado, transações D1, projeção e consulta FTS, adaptador R2 |
 | `src/worker.py` | Rotas HTTP, limites de corpo e checagem de origem |
 | `src/paginas.py` | HTML com escape de valores |
@@ -228,7 +244,8 @@ A busca reduz cada palavra a um radical simples do português, sem diminutivo, p
 e vogal final (`espetinhos` → `espet`), e procura esse radical como prefixo entre
 aspas (`"espet"*`), exigindo todas as palavras. Radicais curtos demais não são
 cortados, para `caminho` não virar `cam`; em troca, `bolinho` e `bolo` continuam
-separados. Não é um stemmer completo nem usa dependência externa. Assim, aspas, `*`, parênteses e `AND`/`OR`/`NOT`/`NEAR` viram texto
+separados. Não é um stemmer completo nem usa dependência externa. Como
+cada palavra fica entre aspas, `*`, parênteses e `AND`/`OR`/`NOT`/`NEAR` viram texto
 comum, e a consulta à FTS nunca fica malformada. O tokenizador `unicode61
 remove_diacritics 2`, já existente, ignora acentos e maiúsculas; não houve migração.
 Texto sem nenhuma letra ou número mostra um aviso em vez de listar tudo. O limite é
@@ -245,6 +262,12 @@ serve para um caderno pessoal; o desempenho com muitos registros ainda será med
 Fotos usam uma segunda requisição. R2 e D1 não têm transação conjunta: se a gravação
 dos metadados falha, o serviço tenta remover o objeto enviado. Falha simultânea de
 D1 e R2 pode deixar objeto órfão; reconciliação automática ainda não está implementada.
+Na exclusão, o banco é alterado primeiro, num único lote com a FTS, e só depois o
+objeto sai do R2. Se o R2 falhar, a foto já some do app, mas o arquivo privado fica
+órfão no bucket e o Worker registra só a quantidade no log. As exclusões removem
+fotos, tags e experiência explicitamente, sem depender de `ON DELETE CASCADE`.
+A edição substitui os campos e as tags e reindexa o item no mesmo `D1.batch`.
+
 O servidor limita tamanho, quantidade e verifica MIME/assinatura JPEG. Não é uma
 validação completa por decodificação de imagem no servidor.
 
@@ -270,7 +293,7 @@ publicar. `workers.dev` e previews permanecem desabilitados nesta fase.
 
 ## Próximos incrementos
 
-4. Página do item com linha do tempo, média e “voltaria/compraria de novo?”.
+4. Linha do tempo completa na página do item, média e “voltaria/compraria de novo?”.
 5. Deploy, Access e teste de registro em menos de 30 segundos no celular.
 
 Um incremento por vez. Nenhuma integração com IA nesta fase.
