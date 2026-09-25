@@ -173,6 +173,23 @@ class ArmazenamentoD1:
             *self._indexar("SELECT id FROM itens WHERE id = ?", (item_id,)),
         ])
 
+    async def listar_fotos_do_item(self, item_id):
+        return await self.consultar("""
+            SELECT f.id, f.chave_r2 FROM fotos f JOIN experiencias e ON e.id = f.experiencia_id
+            WHERE e.item_id = ? ORDER BY f.id
+        """, (item_id,))
+
+    async def excluir_item(self, item_id):
+        # Mesmo cuidado da exclusão de experiência: ordem explícita e documento da busca no mesmo lote.
+        das_experiencias = "SELECT id FROM experiencias WHERE item_id = ?"
+        await self.banco.batch([
+            self.comando(f"DELETE FROM fotos WHERE experiencia_id IN ({das_experiencias})", (item_id,)),
+            self.comando(f"DELETE FROM tags_experiencia WHERE experiencia_id IN ({das_experiencias})", (item_id,)),
+            self.comando("DELETE FROM experiencias WHERE item_id = ?", (item_id,)),
+            self.comando("DELETE FROM busca_itens WHERE rowid = ?", (item_id,)),
+            self.comando("DELETE FROM itens WHERE id = ?", (item_id,)),
+        ])
+
     async def excluir_foto(self, foto_id):
         await self.banco.batch([self.comando("DELETE FROM fotos WHERE id = ?", (foto_id,))])
 

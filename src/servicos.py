@@ -98,6 +98,15 @@ async def excluir_experiencia(armazenamento, arquivos, experiencia_id):
     return {"item_id": experiencia["item_id"], "orfaos": orfaos}
 
 
+async def excluir_item(armazenamento, arquivos, item_id):
+    """Item, experiências, tags, fotos e busca saem juntos; os arquivos das fotos saem depois."""
+    if not await armazenamento.obter_item(item_id):
+        raise LookupError("Esse item não foi encontrado.")
+    fotos = await armazenamento.listar_fotos_do_item(item_id)
+    await armazenamento.excluir_item(item_id)
+    return {"orfaos": await _excluir_arquivos(arquivos, [foto["chave_r2"] for foto in fotos])}
+
+
 async def excluir_foto(armazenamento, arquivos, foto_id):
     foto = await armazenamento.obter_foto(foto_id)
     if not foto:

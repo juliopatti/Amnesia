@@ -36,7 +36,8 @@ testes. Nesta fase, os commits vão direto para `main`.
   naquela categoria.
 - **Editar** o item (nome, categoria, descrição e detalhes) e cada experiência
   (nota, relato, data, pedido, preço, tags e “voltaria?”). A busca acompanha.
-- **Excluir** uma experiência ou uma foto, sempre com uma tela de confirmação.
+- **Excluir** um item inteiro, uma experiência ou uma foto, sempre com uma tela de
+  confirmação que diz o que vai junto.
 
 Tocar no nome de um item abre a página dele: **nota média** em estrelas, resumo do
 “Voltaria?” (quantas respostas foram sim e qual foi a última), descrição, endereço,
@@ -95,7 +96,7 @@ biblioteca de processamento de imagens ou dependência de CDN.
 PYTHONPATH=src python3 -m unittest discover -s tests -v
 ```
 
-Resultado esperado: **76 testes e `OK`**. Esta suíte usa apenas a stdlib,
+Resultado esperado: **83 testes e `OK`**. Esta suíte usa apenas a stdlib,
 não faz chamadas de rede e pode rodar mesmo sem as instalações do passo 2.
 
 ### 4. Prepare ou atualize o banco local
@@ -167,7 +168,7 @@ Para corrigir algo:
 5. Busque pelo nome antigo e pelo novo: só o novo deve aparecer.
 
 Se apagar a data ao editar, a original é mantida. Ainda não é possível excluir um
-item inteiro nem mover uma experiência para outro item.
+experiência para outro item.
 
 Para cadastrar apenas um item, preencha o nome e use **Só guardar o item, sem
 experiência**. A descrição do item fica em **Mais detalhes**. Fotos pertencem às
@@ -235,7 +236,7 @@ mostra as execuções de cada push. O workflow configura:
 Não exige segredos Cloudflare e não realiza deploy. As dependências são baixadas
 na preparação do runner; os testes do app usam apenas recursos locais.
 
-Validação local do incremento 4 e das categorias: **76 testes offline e 10 cenários de
+Validação local do incremento 4 e das categorias: **83 testes offline e 10 cenários de
 navegador aprovados**. O teste automatizado de envio rápido não
 substitui cronometrar uma pessoa usando um celular real; essa validação permanece
 para a entrega publicada. Também não houve teste em Safari/iPhone nesta etapa.

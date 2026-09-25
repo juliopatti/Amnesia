@@ -279,6 +279,18 @@ test('edita item e experiência, reflete na busca e exclui com confirmação', a
   expect((await page.request.get(experiencia)).status()).toBe(404);
   await page.goto(`/?q=espetinho+${marcador}`);
   await expect(page.locator('.item')).toHaveCount(0);
+
+  await page.goto(`/?q=certo+${marcador}`);
+  await page.locator('.nome-item').click();
+  const pagina = page.url();
+  await page.getByRole('link', { name: 'Excluir item' }).click();
+  await expect(page.getByRole('heading', { name: 'Excluir este item?' })).toBeVisible();
+  await expect(page.getByText('nem chegou a ser lembrado')).toBeVisible();
+  await page.getByRole('button', { name: 'Excluir de vez' }).click();
+  await expect(page).toHaveURL(/\/$/);
+  expect((await page.request.get(pagina)).status()).toBe(404);
+  await page.goto(`/?q=certo+${marcador}`);
+  await expect(page.locator('.item')).toHaveCount(0);
 });
 
 test('categorias novas: filme com detalhes próprios e filtro por categoria', async ({ page }) => {

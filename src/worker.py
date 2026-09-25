@@ -11,9 +11,9 @@ from armazenamento import ArmazenamentoD1, ArmazenamentoR2
 from dominio import (CATEGORIA_PADRAO, MAX_BUSCA, MAX_FOTO_BYTES, campos_da_categoria, categoria_raiz, categoria_valida,
                      horario_local, preco_em_centavos)
 from paginas import (pagina_inicial, formulario, confirmacao, pagina_item, formulario_item,
-                     formulario_experiencia, confirmar_exclusao, valores_item, valores_experiencia)
+                     formulario_experiencia, confirmar_exclusao, texto_vai_junto, valores_item, valores_experiencia)
 from servicos import (verificar_base, buscar, criar_item, registrar_experiencia, anexar_foto,
-                      editar_item, editar_experiencia, excluir_experiencia, excluir_foto)
+                      editar_item, editar_experiencia, excluir_experiencia, excluir_foto, excluir_item)
 
 
 RECURSO = re.compile(r"/(itens|experiencias|fotos)/([^/]+)(?:/(editar|excluir))?")
@@ -107,6 +107,7 @@ async def ler_formulario(request):
 FORMATO_RECUSADO = {"erro": "Formato de formulário não suportado."}
 
 
+
 class Default(WorkerEntrypoint):
     async def pagina_busca(self, banco, consulta):
         criterios = {campo: consulta.get(parametro, [""])[0] for campo, parametro in
@@ -137,8 +138,17 @@ class Default(WorkerEntrypoint):
                 raise LookupError("Esse item não foi encontrado.")
             if acao is None:
                 return html(pagina_item(item, await banco.listar_experiencias(registro_id)))
-            if acao != "editar":
-                return None
+            if acao == "excluir" and valores is None:
+                experiencias = len(await banco.listar_experiencias(registro_id))
+                fotos = len(await banco.listar_fotos_do_item(registro_id))
+                return html(confirmar_exclusao(
+                    "Excluir este item?", f"{item['nome']}. {texto_vai_junto(experiencias, fotos)}",
+                    f"/itens/{registro_id}/excluir", f"/itens/{registro_id}"))
+            if acao == "excluir":
+                resultado = await excluir_item(banco, arquivos, registro_id)
+                if resultado["orfaos"]:
+                    print("Fotos não removidas do armazenamento:", resultado["orfaos"])
+                return redirecionar("/")
             if valores is None:
                 return html(formulario_item(item, valores_item(item)))
             try:

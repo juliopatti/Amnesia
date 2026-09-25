@@ -3,9 +3,10 @@ import unittest
 
 from armazenamento import ArmazenamentoD1
 from dominio import centavos_em_texto, preco_em_centavos
-from paginas import formulario_experiencia, formulario_item, pagina_item, valores_experiencia, valores_item
+from paginas import (formulario_experiencia, formulario_item, pagina_item, texto_vai_junto, valores_experiencia,
+                     valores_item)
 from servicos import (anexar_foto, buscar, editar_experiencia, editar_item, excluir_experiencia,
-                      excluir_foto, registrar_experiencia)
+                      excluir_foto, excluir_item, registrar_experiencia)
 from dubles import ArquivosMemoria, BancoSQLite
 
 AGORA = datetime(2026, 9, 25, 1, tzinfo=timezone.utc)
@@ -125,6 +126,57 @@ class TestEdicao(unittest.IsolatedAsyncioTestCase):
         self.assertIn(f'class="miniatura" src="/fotos/{fotos[0]["id"]}"', pagina)
         await excluir_foto(self.banco, self.arquivos, fotos[0]['id'])
         self.assertEqual((await self.banco.listar_experiencias(self.item_id))[0]['foto_id'], fotos[1]['id'])
+
+    async def outro_item(self):
+        salvo = await registrar_experiencia(self.banco, {'texto': 'Coxinha quente', 'tags': ['boteco']}, 'f' * 32, AGORA,
+                                            novo_item={'nome': 'Bar Vizinho'})
+        return salvo['item_id']
+
+    async def test_excluir_item_leva_tudo_e_preserva_os_outros(self):
+        vizinho = await self.outro_item()
+        await registrar_experiencia(self.banco, {'texto': 'Segunda visita'}, 'c' * 32, AGORA, item_id=self.item_id)
+        await anexar_foto(self.banco, self.arquivos, self.exp_id, 'b' * 32, JPEG, 'image/jpeg')
+        foto_vizinho = await anexar_foto(self.banco, self.arquivos, (await self.banco.listar_experiencias(vizinho))[0]['id'],
+                                         'd' * 32, JPEG, 'image/jpeg')
+        self.assertEqual(await excluir_item(self.banco, self.arquivos, self.item_id), {'orfaos': 0})
+        self.assertIsNone(await self.banco.obter_item(self.item_id))
+        self.assertEqual(await self.banco.contar_registros(), {'itens': 1, 'experiencias': 1, 'documentos_busca': 1})
+        self.assertEqual(list(self.arquivos.arquivos), [foto_vizinho['chave_r2']])
+        self.assertEqual(await self.banco.consultar('SELECT tag FROM tags_experiencia'), [{'tag': 'boteco'}])
+        self.assertEqual(await self.ids('coxinha'), [vizinho])
+        self.assertEqual(await self.ids('erado'), [])
+        with self.assertRaises(LookupError):
+            await excluir_item(self.banco, self.arquivos, self.item_id)
+
+    async def test_excluir_item_sem_experiencia(self):
+        salvo = await registrar_experiencia(self.banco, {}, 'e' * 32, AGORA, novo_item={'nome': 'Vazio'})
+        await excluir_experiencia(self.banco, self.arquivos, salvo['id'])
+        await excluir_item(self.banco, self.arquivos, salvo['item_id'])
+        self.assertIsNone(await self.banco.obter_item(salvo['item_id']))
+
+    async def test_falha_no_banco_preserva_item_inteiro(self):
+        await anexar_foto(self.banco, self.arquivos, self.exp_id, 'b' * 32, JPEG, 'image/jpeg')
+        self.binding.falhar_em = 'DELETE FROM itens'
+        with self.assertRaises(RuntimeError):
+            await excluir_item(self.banco, self.arquivos, self.item_id)
+        self.binding.falhar_em = None
+        self.assertIsNotNone(await self.banco.obter_item(self.item_id))
+        self.assertEqual(await self.banco.contar_registros(), {'itens': 1, 'experiencias': 1, 'documentos_busca': 1})
+        self.assertEqual(len(await self.banco.listar_fotos(self.exp_id)), 1)
+        self.assertEqual(len(self.arquivos.arquivos), 1)
+        self.assertEqual(await self.ids('coxinha'), [self.item_id])
+
+    async def test_falha_no_armazenamento_de_fotos_nao_impede_excluir_item(self):
+        await anexar_foto(self.banco, self.arquivos, self.exp_id, 'b' * 32, JPEG, 'image/jpeg')
+        self.arquivos.falhar_exclusao = True
+        self.assertEqual(await excluir_item(self.banco, self.arquivos, self.item_id), {'orfaos': 1})
+        self.assertIsNone(await self.banco.obter_item(self.item_id))
+
+    def test_aviso_do_que_vai_junto(self):
+        self.assertEqual(texto_vai_junto(1, 0), 'Vai junto 1 experiência. Esquecer de propósito é definitivo.')
+        self.assertEqual(texto_vai_junto(2, 1), 'Vão junto 2 experiências e 1 foto. Esquecer de propósito é definitivo.')
+        self.assertEqual(texto_vai_junto(1, 3), 'Vão junto 1 experiência e 3 fotos. Esquecer de propósito é definitivo.')
+        self.assertIn('nem chegou a ser lembrado', texto_vai_junto(0, 0))
 
     async def test_excluir_foto_libera_vaga(self):
         fotos = [await anexar_foto(self.banco, self.arquivos, self.exp_id, letra * 32, JPEG, 'image/jpeg')

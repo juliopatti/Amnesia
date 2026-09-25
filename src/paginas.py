@@ -351,6 +351,17 @@ def formulario_experiencia(experiencia, valores, erro=""):
         <a href="/experiencias/{experiencia['id']}">Cancelar</a></div></form>""", "Editar experiência")
 
 
+def texto_vai_junto(experiencias, fotos):
+    """Aviso da exclusão de item: o que some junto, com concordância."""
+    if not experiencias:
+        return "Nenhuma experiência vai junto; ele nem chegou a ser lembrado."
+    partes = [f"{experiencias} experiência{'s' if experiencias > 1 else ''}"]
+    if fotos:
+        partes.append(f"{fotos} foto{'s' if fotos > 1 else ''}")
+    verbo = "Vai" if experiencias == 1 and not fotos else "Vão"
+    return f"{verbo} junto {' e '.join(partes)}. Esquecer de propósito é definitivo."
+
+
 def confirmar_exclusao(titulo, explicacao, acao, voltar, extra=""):
     return estrutura(f"""<a class="voltar" href="{voltar}">← Voltar</a>
         <p class="sobretitulo">SEM VOLTA</p><h1 class="titulo-form">{escape(titulo)}</h1>
@@ -450,6 +461,7 @@ def pagina_item(item, experiencias):
         {resumo_media([e['nota'] for e in experiencias])}{linha_voltaria(experiencias)}
         {f'<p class="relato">{escape(item["descricao"])}</p>' if item['descricao'] else ''}
         {contatos_item(item['categoria'], detalhes)}
-        <p class="editar"><a href="/itens/{item['id']}/editar">Editar item</a></p>
+        <p class="editar"><a href="/itens/{item['id']}/editar">Editar item</a>
+        <a href="/itens/{item['id']}/excluir">Excluir item</a></p>
         <div class="acoes"><a class="botao principal" href="/registrar?item_id={item['id']}">Registrar uma experiência</a></div>
         <h2>Experiências</h2><ul class="experiencias">{lista}</ul>""", item["nome"])
