@@ -122,6 +122,10 @@ test('foto reduzida, falha de upload preserva registro e permite repetir', async
   expect(foto.headers()['content-type']).toBe('image/jpeg');
   expect(foto.headers()['x-content-type-options']).toBe('nosniff');
   const endereco = await imagem.getAttribute('src');
+  const experiencia = page.url();
+  await page.getByRole('link', { name: '← Voltar ao lugar' }).click();
+  await expect(page.locator('.experiencias .miniatura')).toHaveAttribute('src', endereco);
+  await page.goto(experiencia);
   await page.getByRole('link', { name: 'Remover foto 1' }).click();
   await expect(page.getByRole('heading', { name: 'Remover esta foto?' })).toBeVisible();
   await page.getByRole('button', { name: 'Excluir de vez' }).click();
@@ -256,6 +260,7 @@ test('edita item e experiência, reflete na busca e exclui com confirmação', a
   await expect(page.locator('.experiencias')).toContainText('4,5 / 5');
   await expect(page.locator('.media-item')).toContainText('4,5');
   await expect(page.locator('.media-item').getByRole('img', { name: '4,5 de 5' })).toBeVisible();
+  await expect(page.locator('.resumo-voltaria')).toHaveCount(0);
 
   for (const [termo, total] of [[`erado ${marcador}`, 0], [`espeto ${marcador}`, 1], [`coxinha ${marcador}`, 0], [`lapa ${marcador}`, 1]]) {
     await page.goto(`/?q=${encodeURIComponent(termo)}`);

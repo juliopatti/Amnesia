@@ -131,8 +131,9 @@ class ArmazenamentoD1:
 
     async def listar_experiencias(self, item_id):
         return await self.consultar("""
-            SELECT id, data, nota, texto, voltaria FROM experiencias
-            WHERE item_id = ? ORDER BY data DESC, id DESC
+            SELECT e.id, e.data, e.nota, e.texto, e.voltaria,
+                   (SELECT f.id FROM fotos f WHERE f.experiencia_id = e.id ORDER BY f.ordem, f.id LIMIT 1) AS foto_id
+            FROM experiencias e WHERE e.item_id = ? ORDER BY e.data DESC, e.id DESC
         """, (item_id,))
 
     async def listar_tags(self, experiencia_id):

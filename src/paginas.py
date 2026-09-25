@@ -5,7 +5,7 @@ import json
 import re
 from urllib.parse import urlencode
 
-from dominio import MAX_FOTOS, VOLTARIA, centavos_em_texto, contato_telefone, resumo_notas
+from dominio import MAX_FOTOS, VOLTARIA, centavos_em_texto, contato_telefone, resumo_notas, resumo_voltaria
 
 BUSCA_VAZIA = {"texto": "", "categoria": "", "nota_min": None, "nota_max": None}
 # 422 traz a página com a mensagem de erro da busca; o htmx precisa trocá-la mesmo assim.
@@ -387,9 +387,21 @@ def contatos_item(detalhes):
 def linha_experiencia(experiencia):
     voltaria = experiencia["voltaria"]
     resposta = "" if voltaria is None else f'<span class="meta">Voltaria? {escape(VOLTARIA[voltaria])}</span>'
-    return (f'<li><a href="/experiencias/{experiencia["id"]}"><span class="linha-nota">{estrelas_leitura(experiencia["nota"])}'
+    foto = experiencia.get("foto_id")
+    miniatura = f'<img class="miniatura" src="/fotos/{foto}" alt="" loading="lazy">' if foto else ""
+    return (f'<li><a href="/experiencias/{experiencia["id"]}">{miniatura}<span class="texto-experiencia">'
+            f'<span class="linha-nota">{estrelas_leitura(experiencia["nota"])}'
             f'<span class="categoria">{data_br(experiencia["data"])} · {escape(texto_nota(experiencia["nota"]))}</span></span>'
-            f'<span class="relato-curto">{escape(experiencia["texto"][:140]) or "Sem relato."}</span>{resposta}</a></li>')
+            f'<span class="relato-curto">{escape(experiencia["texto"][:140]) or "Sem relato."}</span>{resposta}</span></a></li>')
+
+
+def linha_voltaria(experiencias):
+    resumo = resumo_voltaria([e["voltaria"] for e in experiencias])
+    if resumo is None:
+        return ""
+    vezes = "resposta" if resumo["respondidas"] == 1 else "respostas"
+    return (f'<p class="resumo-voltaria">Voltaria em <strong>{resumo["sim"]} de {resumo["respondidas"]}</strong> {vezes}'
+            f' · última: {escape(resumo["ultima"])}</p>')
 
 
 def pagina_item(item, experiencias):
@@ -400,7 +412,7 @@ def pagina_item(item, experiencias):
         lista = '<li class="vazio"><p>Nenhuma experiência ainda. Suspeito.</p></li>'
     return estrutura(f"""<a class="voltar" href="/">← Meu caderno</a>
         <p class="sobretitulo">{nome_categoria(item['categoria']).upper()}</p><h1 class="titulo-form">{escape(item['nome'])}</h1>
-        {resumo_media([e['nota'] for e in experiencias])}
+        {resumo_media([e['nota'] for e in experiencias])}{linha_voltaria(experiencias)}
         {f'<p class="relato">{escape(item["descricao"])}</p>' if item['descricao'] else ''}
         {contatos_item(detalhes)}
         <p class="editar"><a href="/itens/{item['id']}/editar">Editar item</a></p>

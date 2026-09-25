@@ -154,10 +154,14 @@ mark { background: #f3e2a9; color: inherit; border-radius: 3px; padding: 0 2px; 
 .numero-media { font-size: 1.35rem; font-weight: 750; }
 .contatos { display: flex; flex-wrap: wrap; gap: 8px; margin: 4px 0 12px; }
 .contatos .botao { min-height: 44px; padding: 10px 14px; font-size: .9rem; }
-.experiencias a { display: block; padding: 14px 0; border-bottom: 1px solid var(--borda); color: inherit; text-decoration: none; }
+.experiencias a { display: flex; gap: 12px; align-items: flex-start; padding: 14px 0; border-bottom: 1px solid var(--borda); color: inherit; text-decoration: none; }
 .experiencias a:hover .relato-curto { text-decoration: underline; }
 .experiencias .estrelas-leitura { font-size: 1rem; }
 .relato-curto { display: block; overflow-wrap: anywhere; }
+.texto-experiencia { min-width: 0; }
+.miniatura { flex-shrink: 0; width: 64px; height: 64px; object-fit: cover; border-radius: 10px; }
+.resumo-voltaria { margin: -6px 0 14px; color: var(--suave); }
+.resumo-voltaria strong { color: var(--verde); }
 .anexar { margin: 20px 0; }
 .anexar form { margin-top: 4px; }
 .anexar .botao { margin-top: 12px; }

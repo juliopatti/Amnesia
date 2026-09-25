@@ -61,6 +61,15 @@ def resumo_notas(notas):
             "avaliadas": len(avaliadas), "experiencias": len(notas)}
 
 
+def resumo_voltaria(respostas):
+    """Respostas da mais recente para a mais antiga; "voltaria" conta os dois níveis de sim (4 e 5)."""
+    respondidas = [resposta for resposta in respostas if resposta is not None]
+    if not respondidas:
+        return None
+    return {"sim": sum(resposta >= 4 for resposta in respondidas), "respondidas": len(respondidas),
+            "ultima": VOLTARIA[respondidas[0]]}
+
+
 def horario_local(instante):
     """O chamador fornece o relógio; o domínio só converte para o offset fixo."""
     if not isinstance(instante, datetime) or instante.utcoffset() is None:

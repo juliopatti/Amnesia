@@ -116,6 +116,16 @@ class TestEdicao(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(len(await self.banco.listar_fotos(self.exp_id)), 1)
         self.assertEqual(len(self.arquivos.arquivos), 1)
 
+    async def test_lista_traz_a_primeira_foto_da_experiencia(self):
+        fotos = [await anexar_foto(self.banco, self.arquivos, self.exp_id, letra * 32, JPEG, 'image/jpeg')
+                 for letra in 'bc']
+        linhas = await self.banco.listar_experiencias(self.item_id)
+        self.assertEqual(linhas[0]['foto_id'], fotos[0]['id'])
+        pagina = pagina_item(await self.banco.obter_item(self.item_id), linhas)
+        self.assertIn(f'class="miniatura" src="/fotos/{fotos[0]["id"]}"', pagina)
+        await excluir_foto(self.banco, self.arquivos, fotos[0]['id'])
+        self.assertEqual((await self.banco.listar_experiencias(self.item_id))[0]['foto_id'], fotos[1]['id'])
+
     async def test_excluir_foto_libera_vaga(self):
         fotos = [await anexar_foto(self.banco, self.arquivos, self.exp_id, letra * 32, JPEG, 'image/jpeg')
                  for letra in 'bcd']
@@ -161,6 +171,10 @@ class TestFormulariosEdicao(unittest.IsolatedAsyncioTestCase):
         self.assertIn('meias-5', media, '2,25 arredonda para 2,5 estrelas no desenho')
         self.assertIn('média de 3 experiências, 2 com nota', media)
         self.assertIn('Sem nota', pagina_item(item, experiencias[2:]))
+        self.assertNotIn('resumo-voltaria', media, 'sem respostas, sem resumo')
+        experiencias[0]['voltaria'], experiencias[1]['voltaria'] = 1, 5
+        self.assertIn('Voltaria em <strong>1 de 2</strong> respostas · última: Não por livre espontânea vontade',
+                      pagina_item(item, experiencias))
 
     async def test_telefone_vira_acoes_e_entra_na_busca(self):
         binding = BancoSQLite()
