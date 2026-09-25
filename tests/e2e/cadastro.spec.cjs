@@ -302,6 +302,17 @@ test('categorias novas: filme com detalhes próprios e filtro por categoria', as
   await expect(page.locator('.itens')).not.toContainText('Bar de teste');
 });
 
+test('no computador todas as categorias aparecem sem rolagem', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await page.goto('/');
+  const faixa = await page.locator('.filtros').boundingBox();
+  for (const nome of ['Tudo', 'Bares e restaurantes', 'Livros', 'Música']) {
+    const pilula = await page.getByText(nome, { exact: true }).boundingBox();
+    expect(pilula.x + pilula.width, nome).toBeLessThanOrEqual(faixa.x + faixa.width);
+  }
+  expect(await page.locator('.filtros').evaluate(f => f.scrollWidth <= f.clientWidth)).toBeTruthy();
+});
+
 test('layout mobile sem rolagem horizontal e controles rotulados', async ({ page }) => {
   await page.setViewportSize({ width: 360, height: 800 });
   for (const [caminho, titulo] of [['/registrar', 'Guardar uma experiência'], ['/?q=coxinha&nota_min=0', 'Resultados']]) {

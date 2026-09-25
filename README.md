@@ -210,13 +210,14 @@ Para usar o Chrome já instalado no Linux, em vez do Chromium baixado:
 PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/google-chrome npm run test:e2e
 ```
 
-Os 9 cenários verificam cadastro, meia estrela/zero/ausência, teclado, produto,
+Os 10 cenários verificam cadastro, meia estrela/zero/ausência, teclado, produto,
 campos preservados após erro, htmx, cadastro sem JavaScript, escape de HTML, redução
 real de imagem, falha e repetição de upload, leitura da foto no R2, proteção de
 origem, reenvio concorrente, busca (relato, acentos, filtros, htmx, entradas especiais
 e estados vazios), categorias com detalhes próprios e filtro, edição com e sem
 JavaScript refletida na busca, exclusão de
-experiência e de foto com confirmação e layout mobile sem rolagem horizontal.
+experiência e de foto com confirmação, layout mobile sem rolagem horizontal e todas
+as categorias visíveis no computador.
 
 Em caso de falha, capturas e traces ficam em `test-results/`, ignorado pelo Git.
 Esses arquivos podem conter o conteúdo usado no teste; use somente dados fictícios.
@@ -232,7 +233,7 @@ mostra as execuções de cada push. O workflow configura:
 Não exige segredos Cloudflare e não realiza deploy. As dependências são baixadas
 na preparação do runner; os testes do app usam apenas recursos locais.
 
-Validação local do incremento 4 e das categorias: **76 testes offline e 9 cenários de
+Validação local do incremento 4 e das categorias: **76 testes offline e 10 cenários de
 navegador aprovados**. O teste automatizado de envio rápido não
 substitui cronometrar uma pessoa usando um celular real; essa validação permanece
 para a entrega publicada. Também não houve teste em Safari/iPhone nesta etapa.

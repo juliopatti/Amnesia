@@ -104,7 +104,7 @@ form.busca { margin: 14px 0 2px; }
 .campo-busca { display: flex; gap: 8px; }
 .campo-busca input { flex: 1; min-width: 0; }
 .campo-busca .botao { padding-inline: 16px; }
-/* Sete categorias não cabem numa linha do celular: a faixa rola na horizontal, a página não. */
+/* No celular a faixa de categorias rola na horizontal (a página não); em telas largas, quebra linha. */
 .filtros { display: flex; gap: 8px; margin: 12px -20px 0; padding: 0 20px 4px; overflow-x: auto; scrollbar-width: none; }
 .filtros .filtro { flex-shrink: 0; white-space: nowrap; }
 .filtros .filtro { position: relative; margin: 0; padding: 8px 16px; min-height: 44px; display: flex; align-items: center; border-radius: 99px; border: 1px solid var(--borda); background: var(--superficie); color: var(--verde); font-weight: 500; font-size: .92rem; cursor: pointer; }
@@ -176,6 +176,7 @@ mark { background: #f3e2a9; color: inherit; border-radius: 3px; padding: 0 2px; 
 
 @media (min-width: 600px) {
   header, main, footer { padding-inline: 32px; }
+  .filtros { flex-wrap: wrap; overflow: visible; margin-inline: 0; padding-inline: 0; }
   .abertura { padding-block: 20px 28px; }
   .acoes { flex-direction: row; flex-wrap: wrap; align-items: center; }
   .acoes > .principal { min-width: 240px; }
