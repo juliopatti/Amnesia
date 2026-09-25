@@ -149,7 +149,9 @@ class Default(WorkerEntrypoint):
             if not experiencia:
                 raise LookupError("Essa experiência não foi encontrada.")
             if acao is None:
-                return html(confirmacao(experiencia, await banco.listar_fotos(registro_id)))
+                guardada = parse_qs(urlsplit(request.url).query).get("guardada") == ["1"]
+                return html(confirmacao(experiencia, await banco.listar_fotos(registro_id),
+                                        await banco.listar_tags(registro_id), guardada))
             if acao == "editar" and valores is None:
                 tags = await banco.listar_tags(registro_id)
                 return html(formulario_experiencia(experiencia, valores_experiencia(experiencia, tags)))
@@ -202,7 +204,7 @@ class Default(WorkerEntrypoint):
                 if resposta is not None:
                     return resposta
             elif request.method == "GET":
-                if caminho in ("/estilo.css", "/fotos.js", "/htmx.min.js"):
+                if caminho in ("/estilo.css", "/fotos.js", "/htmx.min.js", "/seta.svg"):
                     return await self.env.ASSETS.fetch(request)
                 consulta = parse_qs(url.query)
                 if caminho == "/saude":
@@ -232,7 +234,7 @@ class Default(WorkerEntrypoint):
                             raise ValueError("Ação desconhecida.")
                         salvo = await registrar_experiencia(banco, dados_experiencia(valores), chave, instante,
                             item_id=item_id, novo_item=dados_item(valores) if item_id is None else None)
-                        destino = {"url": f"/experiencias/{salvo['id']}", "experiencia_id": salvo["id"], "item_id": salvo["item_id"]}
+                        destino = {"url": f"/experiencias/{salvo['id']}?guardada=1", "experiencia_id": salvo["id"], "item_id": salvo["item_id"]}
                     return resposta_json(destino) if quer_json else redirecionar(destino["url"])
                 except ValueError as erro:
                     if quer_json:

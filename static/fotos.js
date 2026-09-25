@@ -20,8 +20,6 @@
       saida.hidden = false;
       saida.textContent = nota === '' ? 'Sem nota' : `${nota.replace('.', ',')} / 5`;
     }
-    const anexar = document.querySelector('#anexar-fotos');
-    if (anexar && Number(anexar.dataset.total) >= 3) anexar.hidden = true;
   }
 
   function aviso(mensagem) {

@@ -36,7 +36,7 @@ test('cadastro rápido, meia estrela, teclado e nova experiência no mesmo item'
   await page.getByLabel('Como foi?').fill('Coxinha fria.\nNão volto.');
   const inicio = Date.now();
   await page.getByRole('button', { name: 'Guardar experiência', exact: true }).click();
-  await expect(page).toHaveURL(/\/experiencias\/\d+$/);
+  await expect(page).toHaveURL(/\/experiencias\/\d+(\?guardada=1)?$/);
   expect(Date.now() - inicio).toBeLessThan(10000);
   await expect(page.locator('.resumo')).toContainText(nome);
   await expect(page.locator('.resumo')).toContainText('2,5 / 5');
@@ -62,7 +62,7 @@ test('produto, campos extras, validação preserva texto e filtro htmx', async (
   await expect(page.getByLabel('Como foi?')).toHaveValue('Amargo na medida.');
   await page.getByLabel('Quanto paguei (R$)').fill('12,50');
   await page.getByRole('button', { name: 'Guardar experiência', exact: true }).click();
-  await expect(page).toHaveURL(/\/experiencias\/\d+$/);
+  await expect(page).toHaveURL(/\/experiencias\/\d+(\?guardada=1)?$/);
   await page.goto('/');
   const resposta = page.waitForRequest(req => req.url().includes('categoria=produto') && req.headers()['hx-request'] === 'true');
   await page.getByText('Produtos', { exact: true }).click();
@@ -113,7 +113,7 @@ test('foto reduzida, falha de upload preserva registro e permite repetir', async
   await page.getByRole('button', { name: 'Tentar fotos novamente' }).click();
   const request = await upload;
   expect(request.headers()['content-type']).toBe('image/jpeg');
-  await expect(page).toHaveURL(/\/experiencias\/\d+$/);
+  await expect(page).toHaveURL(/\/experiencias\/\d+(\?guardada=1)?$/);
   const imagem = page.locator('.galeria img');
   await expect(imagem).toBeVisible();
   await expect.poll(() => imagem.evaluate(img => img.naturalWidth)).toBe(1600);
@@ -125,7 +125,7 @@ test('foto reduzida, falha de upload preserva registro e permite repetir', async
   await page.getByRole('link', { name: 'Remover foto 1' }).click();
   await expect(page.getByRole('heading', { name: 'Remover esta foto?' })).toBeVisible();
   await page.getByRole('button', { name: 'Excluir de vez' }).click();
-  await expect(page).toHaveURL(/\/experiencias\/\d+$/);
+  await expect(page).toHaveURL(/\/experiencias\/\d+(\?guardada=1)?$/);
   await expect(page.locator('.galeria img')).toHaveCount(0);
   await expect(page.locator('.resumo')).toContainText('Texto salvo antes da foto.');
   expect((await page.request.get(endereco)).status()).toBe(404);
@@ -154,11 +154,11 @@ test('busca no topo encontra relato, ignora acento, filtra e trata entradas espe
   await page.locator('label[for="nota-4"]').click();
   await page.getByLabel('Como foi?').fill('Coxinha crocante. Açaí nem tanto.');
   await page.getByRole('button', { name: 'Guardar experiência', exact: true }).click();
-  await expect(page).toHaveURL(/\/experiencias\/\d+$/);
+  await expect(page).toHaveURL(/\/experiencias\/\d+(\?guardada=1)?$/);
   await page.getByRole('link', { name: 'Outra experiência aqui' }).click();
   await page.getByLabel('Como foi?').fill('Voltei pela coxinha.');
   await page.getByRole('button', { name: 'Guardar experiência', exact: true }).click();
-  await expect(page).toHaveURL(/\/experiencias\/\d+$/);
+  await expect(page).toHaveURL(/\/experiencias\/\d+(\?guardada=1)?$/);
 
   // Busca digitada em outra página leva à inicial.
   await page.getByLabel('Buscar nas lembranças').fill(`COXINHA ${marcador}`);
@@ -211,8 +211,8 @@ test('edita item e experiência, reflete na busca e exclui com confirmação', a
   await page.getByLabel('Tags').fill('boteco');
   await page.getByLabel('Quanto paguei (R$)').fill('7,05');
   await page.getByRole('button', { name: 'Guardar experiência', exact: true }).click();
-  await expect(page).toHaveURL(/\/experiencias\/\d+$/);
-  const experiencia = page.url();
+  await expect(page).toHaveURL(/\/experiencias\/\d+(\?guardada=1)?$/);
+  const experiencia = page.url().split('?')[0];
 
   await page.getByRole('link', { name: 'Editar experiência' }).click();
   await expect(page.getByLabel('Como foi?')).toHaveValue('Coxinha fria.');
@@ -238,7 +238,7 @@ test('edita item e experiência, reflete na busca e exclui com confirmação', a
   await expect(page.locator('.resumo')).toContainText('4,5 / 5');
   await expect(page.locator('.resumo')).toContainText('Espetinho no ponto.');
 
-  await page.getByRole('link', { name: `← Bar erado ${marcador}` }).click();
+  await page.getByRole('link', { name: '← Voltar ao lugar' }).click();
   await page.getByRole('link', { name: 'Editar item' }).click();
   await expect(page.getByLabel('Nome', { exact: true })).toHaveValue(`Bar erado ${marcador}`);
   await page.getByLabel('O que é?').selectOption('produto');
@@ -255,7 +255,7 @@ test('edita item e experiência, reflete na busca e exclui com confirmação', a
   await expect(page.getByRole('link', { name: /^Ligar/ })).toHaveAttribute('href', 'tel:+5511987654321');
   await expect(page.locator('.experiencias')).toContainText('4,5 / 5');
   await expect(page.locator('.media-item')).toContainText('4,5');
-  await expect(page.getByRole('img', { name: '4,5 de 5' })).toBeVisible();
+  await expect(page.locator('.media-item').getByRole('img', { name: '4,5 de 5' })).toBeVisible();
 
   for (const [termo, total] of [[`erado ${marcador}`, 0], [`espeto ${marcador}`, 1], [`coxinha ${marcador}`, 0], [`lapa ${marcador}`, 1]]) {
     await page.goto(`/?q=${encodeURIComponent(termo)}`);

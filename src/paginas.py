@@ -5,7 +5,7 @@ import json
 import re
 from urllib.parse import urlencode
 
-from dominio import VOLTARIA, centavos_em_texto, contato_telefone, resumo_notas
+from dominio import MAX_FOTOS, VOLTARIA, centavos_em_texto, contato_telefone, resumo_notas
 
 BUSCA_VAZIA = {"texto": "", "categoria": "", "nota_min": None, "nota_max": None}
 # 422 traz a página com a mensagem de erro da busca; o htmx precisa trocá-la mesmo assim.
@@ -31,6 +31,12 @@ def estrutura(conteudo, titulo="Seu caderno", filtros=""):
 </body></html>"""
 
 
+def data_br(data):
+    """AAAA-MM-DD, já validada no domínio, exibida como DD/MM/AAAA."""
+    ano, mes, dia = data.split("-")
+    return f"{dia}/{mes}/{ano}"
+
+
 def nota_texto(nota):
     return f"{nota:g}".replace(".", ",")
 
@@ -47,9 +53,8 @@ def formulario_busca(busca=None, categorias=()):
         return f'<form class="busca" action="/" method="get" role="search">{campo_busca}</form>'
     chips = ""
     for slug, nome in [("", "Tudo")] + [(c["slug"], c["nome"]) for c in categorias]:
-        marcado = "checked" if slug == busca["categoria"] else ""
-        chips += (f'<input class="radio-visual" type="radio" name="categoria" id="categoria-{escape(slug) or "todas"}" '
-                  f'value="{escape(slug)}" {marcado}><label class="filtro" for="categoria-{escape(slug) or "todas"}">{escape(nome)}</label>')
+        chips += pilula("categoria", slug, f"categoria-{escape(slug) or 'todas'}", escape(nome),
+                        slug == busca["categoria"], "filtro")
     faixa = ""
     for nome, rotulo in (("nota_min", "Média de"), ("nota_max", "até")):
         opcoes = '<option value="">qualquer</option>'
@@ -88,16 +93,16 @@ def cartao(item):
     else:
         resumo = f'<p class="descricao">{escape(item["descricao"][:180])}</p>'
     total = item.get("experiencias", 0)
+    categoria = nome_categoria(item["categoria"])
     if not total:
-        meta = "Nenhuma experiência ainda"
+        meta = f"{categoria} · nenhuma experiência ainda"
     else:
         media = "Sem nota" if item.get("media") is None else f"Média {nota_texto(round(item['media'], 2))}"
-        meta = f"{media} · {total} experiência{'s' if total > 1 else ''}"
+        meta = f"{estrelas_leitura(item.get('media'))}{media} · {total} experiência{'s' if total > 1 else ''} · {categoria}"
     return f"""<li class="item">
-        <div><span class="categoria">{'Lugar' if item['categoria'] == 'lugar' else 'Produto'}</span>
-        <h2><a class="nome-item" href="/itens/{item['id']}">{escape(item['nome'])}</a></h2>{resumo}<p class="meta">{meta}</p></div>
-        <a class="botao secundario" href="/registrar?item_id={item['id']}"
-           aria-label="Registrar experiência em {escape(item['nome'])}">Registrar <span aria-hidden="true">↗</span></a>
+        <div><h2><a class="nome-item" href="/itens/{item['id']}">{escape(item['nome'])}</a></h2>{resumo}<p class="meta">{meta}</p></div>
+        <a class="botao-mais" href="/registrar?item_id={item['id']}"
+           aria-label="Registrar experiência em {escape(item['nome'])}"><span aria-hidden="true">+</span></a>
         </li>"""
 
 
@@ -128,8 +133,7 @@ def pagina_inicial(categorias, resultado=None, pagina=1, erro=""):
         topo = f'<div class="resultados"><h1 class="titulo-busca">Resultados</h1><p class="muted" role="status">{contagem}</p></div>'
     else:
         topo = """<section class="abertura"><p class="sobretitulo">SEU CADERNO DE EXPERIÊNCIAS</p>
-        <h1>Foi bom?<br><span>Melhor anotar.</span></h1>
-        <p>Você já esteve aqui. Óbvio que não lembra.</p>
+        <h1>Foi bom? <span>Melhor anotar.</span></h1>
         <a class="botao principal" href="/registrar">+ Registrar experiência</a></section>
         <div class="titulo-lista"><h2>O que ficou na memória</h2></div>"""
     aviso = f'<div class="aviso erro" role="alert">{escape(erro)}</div>' if erro else ""
@@ -154,17 +158,16 @@ def estrelas(nota=""):
     if selecionada.endswith(".0"):
         selecionada = selecionada[:-2]
     def opcao(valor, rotulo, classe=""):
-        selecionado = "checked" if selecionada == valor else ""
-        identificador = "nota-" + (valor.replace(".", "-") or "vazia")
-        return f'<input class="radio-visual" type="radio" name="nota" id="{identificador}" value="{valor}" {selecionado}><label class="{classe}" for="{identificador}">{rotulo}</label>'
-    botoes = opcao("", "Sem nota", "opcao-nota") + opcao("0", "0 estrelas", "opcao-nota")
+        return pilula("nota", valor, "nota-" + valor.replace(".", "-"), rotulo, selecionada == valor, classe)
+    botoes = (pilula("nota", "", "nota-vazia", "Sem nota", selecionada == "")
+              + pilula("nota", "0", "nota-0", "0 estrelas", selecionada == "0"))
     grupo = ""
     for inteira in range(1, 6):
         grupo += f'<span class="estrela" data-estrela="{inteira}"><span class="desenho" aria-hidden="true">★</span>'
         for valor, classe in ((str(inteira - 0.5), "metade"), (str(inteira), "inteira")):
             grupo += opcao(valor, f'<span class="sr-only">{valor.replace(".", ",")} estrelas</span>', classe)
         grupo += '</span>'
-    return f'<fieldset class="avaliacao"><legend>Que nota merece?</legend><div class="opcoes-nota">{botoes}</div><div class="estrelas">{grupo}</div><output class="nota-atual" aria-live="polite" hidden>{escape(selecionada or "Sem nota")}</output><small>Toque na metade esquerda para meia estrela; na direita para uma inteira.</small></fieldset>'
+    return f'<fieldset class="avaliacao"><legend>Que nota merece?</legend><div class="opcoes-nota">{botoes}</div><div class="estrelas">{grupo}</div><output class="nota-atual" aria-live="polite" hidden>{escape(selecionada or "Sem nota")}</output></fieldset>'
 
 
 def seletor_fotos():
@@ -173,6 +176,12 @@ def seletor_fotos():
     <small id="ajuda-fotos">Até 3 fotos. A gente diminui antes de enviar.</small>
     <ul id="previas" class="previas"></ul>
     <noscript><p>O registro funciona sem JavaScript. Para reduzir e enviar fotos, ative o JavaScript.</p></noscript></div>"""
+
+
+def pilula(nome, valor, identificador, rotulo, marcado, classe="opcao-nota"):
+    """Rádio dentro do próprio rótulo: cada opção invisível fica sob a pílula que a representa."""
+    return (f'<label class="{classe}" for="{identificador}"><input class="radio-visual" type="radio" name="{nome}" '
+            f'id="{identificador}" value="{escape(valor)}" {"checked" if marcado else ""}>{rotulo}</label>')
 
 
 def nome_categoria(categoria):
@@ -239,9 +248,8 @@ def campos_experiencia(valores):
     voltaria = '<fieldset class="voltaria"><legend>Voltaria / compraria de novo?</legend><div class="opcoes-voltaria">'
     for valor, rotulo in [("", "Sem resposta")] + [(str(nivel), texto) for nivel, texto in VOLTARIA.items()]:
         identificador = f"voltaria-{valor or 'vazia'}"
-        marcado = "checked" if str(valores.get("voltaria", "")) == valor else ""
-        voltaria += (f'<input class="radio-visual" type="radio" name="voltaria" id="{identificador}" value="{valor}" {marcado}>'
-                     f'<label class="opcao-nota" for="{identificador}">{escape(rotulo)}</label>')
+        marcado = str(valores.get("voltaria", "")) == valor
+        voltaria += pilula("voltaria", valor, identificador, escape(rotulo), marcado)
     voltaria += '</div></fieldset>'
     return (campo("data", "Quando foi?", valores, "date") + campo("pedido", "O que pedi ou provei", valores, atributos='maxlength="10000"')
             + campo("preco", "Quanto paguei (R$)", valores, atributos='inputmode="decimal" maxlength="20" placeholder="12,50"')
@@ -321,23 +329,40 @@ def confirmar_exclusao(titulo, explicacao, acao, voltar, extra=""):
         <a href="{voltar}">Melhor não</a></div></form>""", titulo)
 
 
-def confirmacao(experiencia, fotos):
+def confirmacao(experiencia, fotos, tags=(), guardada=False):
+    """Logo após guardar, comemora; depois, é só a página da experiência."""
     imagens = "".join(
         f'<li><img src="/fotos/{foto["id"]}" alt="Foto {indice+1} desta experiência" loading="lazy">'
         f'<a class="remover" href="/fotos/{foto["id"]}/excluir">Remover foto {indice+1}</a></li>'
         for indice, foto in enumerate(fotos))
-    return estrutura(f"""<a class="voltar" href="/itens/{experiencia['item_id']}">← {escape(experiencia['nome'])}</a>
-        <p class="sobretitulo">LEMBRANÇA GUARDADA</p><h1 class="titulo-form">Pode esquecer.<br>A gente anotou.</h1>
-        <article class="resumo"><span class="categoria">{escape(experiencia['data'])} · {escape(texto_nota(experiencia['nota']))}</span>
-        <h2>{escape(experiencia['nome'])}</h2><p class="relato">{escape(experiencia['texto'])}</p>
-        <p>{escape(experiencia['pedido'])}</p>{texto_voltaria(experiencia['voltaria'])}
+    nome = escape(experiencia['nome'])
+    if guardada:
+        topo = f'<p class="sobretitulo">LEMBRANÇA GUARDADA</p><h1 class="titulo-form">Pode esquecer.<br>A gente anotou.</h1>'
+        titulo_cartao, titulo_pagina = f"<h2>{nome}</h2>", "Experiência guardada"
+    else:
+        topo = f'<p class="sobretitulo">{nome_categoria(experiencia["categoria"]).upper()}</p><h1 class="titulo-form">{nome}</h1>'
+        titulo_cartao, titulo_pagina = "", experiencia["nome"]
+    detalhes = ""
+    if experiencia["pedido"]:
+        detalhes += f'<p><span class="rotulo">Pedi</span> {escape(experiencia["pedido"])}</p>'
+    if experiencia["preco_centavos"] is not None:
+        detalhes += f'<p><span class="rotulo">Paguei</span> R$ {centavos_em_texto(experiencia["preco_centavos"])}</p>'
+    if tags:
+        detalhes += '<ul class="tags">' + "".join(f"<li>{escape(tag)}</li>" for tag in tags) + "</ul>"
+    anexar = f"""<details class="anexar" {"open" if guardada and not fotos else ""}><summary>Anexar fotos</summary>
+        <form id="anexar-fotos" data-experiencia="{experiencia['id']}" data-total="{len(fotos)}">
+        {seletor_fotos()}<button class="botao secundario" type="submit">Enviar fotos</button></form></details>"""
+    return estrutura(f"""<a class="voltar" href="/itens/{experiencia['item_id']}">← Voltar ao {nome_categoria(experiencia['categoria']).lower()}</a>
+        {topo}
+        <article class="resumo"><p class="linha-nota">{estrelas_leitura(experiencia['nota'])}<span class="categoria">{data_br(experiencia['data'])} · {escape(texto_nota(experiencia['nota']))}</span></p>
+        {titulo_cartao}<p class="relato">{escape(experiencia['texto'])}</p>
+        {detalhes}{texto_voltaria(experiencia['voltaria'])}
         <p class="editar"><a href="/experiencias/{experiencia['id']}/editar">Editar experiência</a>
         <a href="/experiencias/{experiencia['id']}/excluir">Excluir</a></p></article><ul class="galeria">{imagens}</ul>
-        <form id="anexar-fotos" data-experiencia="{experiencia['id']}" data-total="{len(fotos)}">
-        {seletor_fotos()}<button class="botao secundario" type="submit">Anexar fotos</button></form>
+        {anexar if len(fotos) < MAX_FOTOS else ""}
         <section id="resultado-upload" class="aviso" aria-live="polite" hidden></section>
         <div class="acoes"><a class="botao principal" href="/registrar?item_id={experiencia['item_id']}">Outra experiência aqui</a>
-        <a href="/">Voltar ao caderno</a></div>""", "Experiência guardada")
+        <a href="/">Voltar ao caderno</a></div>""", titulo_pagina)
 
 
 def contatos_item(detalhes):
@@ -359,13 +384,18 @@ def contatos_item(detalhes):
     return "".join(linhas)
 
 
+def linha_experiencia(experiencia):
+    voltaria = experiencia["voltaria"]
+    resposta = "" if voltaria is None else f'<span class="meta">Voltaria? {escape(VOLTARIA[voltaria])}</span>'
+    return (f'<li><a href="/experiencias/{experiencia["id"]}"><span class="linha-nota">{estrelas_leitura(experiencia["nota"])}'
+            f'<span class="categoria">{data_br(experiencia["data"])} · {escape(texto_nota(experiencia["nota"]))}</span></span>'
+            f'<span class="relato-curto">{escape(experiencia["texto"][:140]) or "Sem relato."}</span>{resposta}</a></li>')
+
+
 def pagina_item(item, experiencias):
     """Lista simples das experiências para chegar à edição; a linha do tempo completa é o incremento 4."""
     detalhes = json.loads(item["detalhes"] or "{}")
-    lista = "".join(
-        f'<li><a href="/experiencias/{e["id"]}"><span class="categoria">{escape(e["data"])} · {escape(texto_nota(e["nota"]))}</span>'
-        f'<span class="relato-curto">{escape(e["texto"][:140]) or "Sem relato."}</span></a></li>'
-        for e in experiencias)
+    lista = "".join(linha_experiencia(e) for e in experiencias)
     if not lista:
         lista = '<li class="vazio"><p>Nenhuma experiência ainda. Suspeito.</p></li>'
     return estrutura(f"""<a class="voltar" href="/">← Meu caderno</a>
