@@ -79,7 +79,7 @@ biblioteca de processamento de imagens ou dependência de CDN.
 PYTHONPATH=src python3 -m unittest discover -s tests -v
 ```
 
-Resultado esperado: **48 testes e `OK`**. Esta suíte usa apenas a stdlib,
+Resultado esperado: **50 testes e `OK`**. Esta suíte usa apenas a stdlib,
 não faz chamadas de rede e pode rodar mesmo sem as instalações do passo 2.
 
 ### 4. Prepare ou atualize o banco local
@@ -125,7 +125,8 @@ Depois, na página inicial:
 
 1. Digite `coxinha` no campo do topo. O bar aparece uma vez, com “Coxinha”
    destacado no relato — mesmo que o nome do bar não tenha essa palavra.
-2. Troque por `COXINHA` ou `coxínha`: maiúsculas e acentos não importam.
+2. Troque por `COXINHA` ou `coxínha`: maiúsculas e acentos não importam. Plural e
+   diminutivo também não: `espetinho` encontra “espeto”, e vice-versa.
 3. Escolha **Lugares** ou **Produtos** e uma faixa em **Média de … até …**.
    Com JavaScript, os resultados mudam sem recarregar; sem ele, use **Buscar**.
 4. Teste entradas estranhas, como `"NOT (` ou `!!!`: a busca responde com uma
@@ -194,7 +195,7 @@ mostra as execuções de cada push. O workflow configura:
 Não exige segredos Cloudflare e não realiza deploy. As dependências são baixadas
 na preparação do runner; os testes do app usam apenas recursos locais.
 
-Validação local do incremento 3: **48 testes offline e 7 cenários de navegador
+Validação local do incremento 3: **50 testes offline e 7 cenários de navegador
 aprovados**. O teste automatizado de envio rápido não
 substitui cronometrar uma pessoa usando um celular real; essa validação permanece
 para a entrega publicada. Também não houve teste em Safari/iPhone nesta etapa.
@@ -223,8 +224,11 @@ A gravação do item, experiência, tags e documento FTS ocorre em um único
 `D1.batch`. Se uma etapa falha, o lote é desfeito. A FTS agrega nome, descrição,
 localização, detalhes, relatos, pedidos e tags, com um documento por item.
 
-A busca transforma cada palavra digitada em um prefixo entre aspas (`"cox"*`), exigindo
-todas as palavras. Assim, aspas, `*`, parênteses e `AND`/`OR`/`NOT`/`NEAR` viram texto
+A busca reduz cada palavra a um radical simples do português, sem diminutivo, plural
+e vogal final (`espetinhos` → `espet`), e procura esse radical como prefixo entre
+aspas (`"espet"*`), exigindo todas as palavras. Radicais curtos demais não são
+cortados, para `caminho` não virar `cam`; em troca, `bolinho` e `bolo` continuam
+separados. Não é um stemmer completo nem usa dependência externa. Assim, aspas, `*`, parênteses e `AND`/`OR`/`NOT`/`NEAR` viram texto
 comum, e a consulta à FTS nunca fica malformada. O tokenizador `unicode61
 remove_diacritics 2`, já existente, ignora acentos e maiúsculas; não houve migração.
 Texto sem nenhuma letra ou número mostra um aviso em vez de listar tudo. O limite é

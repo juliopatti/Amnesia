@@ -51,6 +51,16 @@ class TestBusca(unittest.IsolatedAsyncioTestCase):
             with self.subTest(texto=texto):
                 self.assertEqual(await self.ids(texto=texto), [esperado])
 
+    async def test_diminutivo_plural_e_singular_se_encontram(self):
+        espetaria = await self.novo("Espetaria da Praça")
+        await self.experiencia(espetaria, pedido="Espeto de queijo")
+        boteco = await self.novo("Boteco do Tião")
+        await self.experiencia(boteco, texto="Dois espetinhos e um pãozinho.")
+        for texto in ("espetinho", "espeto", "espetos", "ESPETINHOS"):
+            with self.subTest(texto=texto):
+                self.assertCountEqual(await self.ids(texto=texto), [espetaria, boteco])
+        self.assertCountEqual(await self.ids(texto="pão"), [self.padaria, boteco])
+
     async def test_todas_as_palavras_precisam_aparecer(self):
         self.assertEqual(await self.ids(texto="coxinha santos"), [])
 

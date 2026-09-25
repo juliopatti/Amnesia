@@ -17,6 +17,8 @@ MAX_BUSCA = 200
 MAX_TERMOS = 10
 # Letras e dígitos, incluindo acentos combinantes (texto em NFD); "_" separa palavras.
 TERMO = re.compile(r"(?:[^\W_]|[\u0300-\u036f])+")
+DIMINUTIVOS = ("zinhos", "zinhas", "zinho", "zinha", "inhos", "inhas", "inho", "inha")
+VOGAIS = "aeiou\u00e1\u00e9\u00ed\u00f3\u00fa\u00e2\u00ea\u00f4\u00e3\u00f5\u00e0"
 
 
 def texto_limpo(valor, campo, limite=10000):
@@ -114,6 +116,28 @@ def preparar_experiencia(
     }
 
 
+def raiz_busca(termo):
+    """Radical simples do português para buscar por prefixo: espetinho, espetos e espeto → espet.
+
+    Retira diminutivo, plural e vogal final, sem deixar radical curto demais, que
+    traria palavras sem relação (caminho não vira "cam", bolo não vira "bol").
+    Não é um stemmer completo: bolinho e bolo, por exemplo, continuam separados.
+    """
+    termo = termo.casefold()
+    if not termo.isalpha():
+        return termo
+    for sufixo in DIMINUTIVOS:
+        # "zinho" quase só aparece como diminutivo (pãozinho → pão); "inho" exige radical maior.
+        minimo = 3 if sufixo.startswith("z") else 4
+        if termo.endswith(sufixo) and len(termo) - len(sufixo) >= minimo:
+            return termo[:-len(sufixo)]
+    if termo.endswith("s") and len(termo) > 4:
+        termo = termo[:-1]
+    if termo[-1] in VOGAIS and len(termo) > 4:
+        termo = termo[:-1]
+    return termo
+
+
 def expressao_busca(texto):
     """Converte texto livre em consulta FTS5 segura: cada palavra vira prefixo entre aspas.
 
@@ -124,7 +148,7 @@ def expressao_busca(texto):
     termos = TERMO.findall(texto)
     if len(termos) > MAX_TERMOS:
         raise ValueError(f"Use até {MAX_TERMOS} palavras na busca.")
-    return " ".join(f'"{termo}"*' for termo in termos) or None
+    return " ".join(f'"{raiz_busca(termo)}"*' for termo in termos) or None
 
 
 def preparar_busca(texto="", categoria="", nota_min="", nota_max=""):

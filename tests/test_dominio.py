@@ -2,7 +2,7 @@ from datetime import datetime, timezone
 import unittest
 
 from dominio import (expressao_busca, horario_local, normalizar_nota, preparar_busca,
-                     preparar_experiencia, preparar_item)
+                     preparar_experiencia, preparar_item, raiz_busca)
 
 
 class TestDominio(unittest.TestCase):
@@ -70,9 +70,9 @@ class TestDominio(unittest.TestCase):
 
     def test_expressao_busca_neutraliza_sintaxe_fts(self):
         casos = {
-            "Coxinha": '"Coxinha"*',
-            '  açaí "do" Zé  ': '"açaí"* "do"* "Zé"*',
-            "NOT bar OR (cox*) -pastel NEAR/2 x:y": '"NOT"* "bar"* "OR"* "cox"* "pastel"* "NEAR"* "2"* "x"* "y"*',
+            "Coxinha": '"coxinh"*',
+            '  açaí "do" Zé  ': '"açaí"* "do"* "zé"*',
+            "NOT bar OR (cox*) -pastel NEAR/2 x:y": '"not"* "bar"* "or"* "cox"* "pastel"* "near"* "2"* "x"* "y"*',
             "happy-hour_12,50": '"happy"* "hour"* "12"* "50"*',
             "cafe\u0301": '"cafe\u0301"*',  # "é" decomposto (NFD)
         }
@@ -83,6 +83,15 @@ class TestDominio(unittest.TestCase):
             self.assertIsNone(expressao_busca(vazio))
         with self.assertRaises(ValueError):
             expressao_busca("a " * 11)
+
+    def test_raiz_une_variacoes_sem_encurtar_demais(self):
+        casos = {"espetinho": "espet", "Espetinhos": "espet", "espeto": "espet", "espetos": "espet",
+                 "pãozinho": "pão", "cafezinho": "cafe", "pastéis": "pasté", "chope": "chop",
+                 "caminho": "caminh", "cozinha": "cozinh", "bolo": "bolo", "café": "café",
+                 "bar": "bar", "açaí": "açaí", "coxi": "coxi", "b12": "b12"}
+        for termo, esperado in casos.items():
+            with self.subTest(termo=termo):
+                self.assertEqual(raiz_busca(termo), esperado)
 
     def test_preparar_busca_valida_filtros(self):
         busca = preparar_busca(" coxinha ", "lugar", "0", "3,5")
