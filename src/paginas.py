@@ -5,7 +5,7 @@ import json
 import re
 from urllib.parse import urlencode
 
-from dominio import VOLTARIA, centavos_em_texto, contato_telefone
+from dominio import VOLTARIA, centavos_em_texto, contato_telefone, resumo_notas
 
 BUSCA_VAZIA = {"texto": "", "categoria": "", "nota_min": None, "nota_max": None}
 # 422 traz a página com a mensagem de erro da busca; o htmx precisa trocá-la mesmo assim.
@@ -179,6 +179,33 @@ def nome_categoria(categoria):
     return "Lugar" if categoria == "lugar" else "Produto"
 
 
+def estrelas_leitura(nota):
+    """Estrelas só para leitura, na meia estrela mais próxima; o rótulo traz o número exato.
+
+    A CSP proíbe style inline, por isso o preenchimento usa uma classe por meia estrela.
+    """
+    if nota is None:
+        return ""
+    meias = int(nota * 2 + 0.5)
+    rotulo = f"{nota_texto(round(nota, 2))} de 5"
+    return (f'<span class="estrelas-leitura" role="img" aria-label="{rotulo}">'
+            f'<span class="cheias meias-{meias}">★★★★★</span>★★★★★</span>')
+
+
+def resumo_media(notas):
+    resumo = resumo_notas(notas)
+    if not resumo["experiencias"]:
+        return ""
+    total = resumo["experiencias"]
+    plural = "experiência" if total == 1 else "experiências"
+    if resumo["media"] is None:
+        return f'<p class="media-item"><span class="numero-media">Sem nota</span> <span class="muted">{total} {plural}</span></p>'
+    avaliadas = "" if resumo["avaliadas"] == total else f', {resumo["avaliadas"]} com nota'
+    return (f'<p class="media-item">{estrelas_leitura(resumo["media"])}'
+            f'<span class="numero-media">{nota_texto(round(resumo["media"], 2))}</span>'
+            f'<span class="muted">média de {total} {plural}{avaliadas}</span></p>')
+
+
 def texto_voltaria(voltaria):
     return "" if voltaria is None else f'<p class="voltaria-resposta">Voltaria? <strong>{escape(VOLTARIA[voltaria])}</strong></p>'
 
@@ -343,6 +370,7 @@ def pagina_item(item, experiencias):
         lista = '<li class="vazio"><p>Nenhuma experiência ainda. Suspeito.</p></li>'
     return estrutura(f"""<a class="voltar" href="/">← Meu caderno</a>
         <p class="sobretitulo">{nome_categoria(item['categoria']).upper()}</p><h1 class="titulo-form">{escape(item['nome'])}</h1>
+        {resumo_media([e['nota'] for e in experiencias])}
         {f'<p class="relato">{escape(item["descricao"])}</p>' if item['descricao'] else ''}
         {contatos_item(detalhes)}
         <p class="editar"><a href="/itens/{item['id']}/editar">Editar item</a></p>

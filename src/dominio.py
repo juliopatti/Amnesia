@@ -54,6 +54,13 @@ def normalizar_nota(valor):
     return float(nota)
 
 
+def resumo_notas(notas):
+    """Mesma regra da busca: zero é avaliação, None ("sem nota") fica fora da média."""
+    avaliadas = [nota for nota in notas if nota is not None]
+    return {"media": sum(avaliadas) / len(avaliadas) if avaliadas else None,
+            "avaliadas": len(avaliadas), "experiencias": len(notas)}
+
+
 def horario_local(instante):
     """O chamador fornece o relógio; o domínio só converte para o offset fixo."""
     if not isinstance(instante, datetime) or instante.utcoffset() is None:

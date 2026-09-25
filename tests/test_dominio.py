@@ -1,7 +1,7 @@
 from datetime import datetime, timezone
 import unittest
 
-from dominio import (contato_telefone, expressao_busca, horario_local, normalizar_nota, preparar_busca,
+from dominio import (contato_telefone, resumo_notas, expressao_busca, horario_local, normalizar_nota, preparar_busca,
                      preparar_experiencia, preparar_item, raiz_busca)
 
 
@@ -114,6 +114,11 @@ class TestDominio(unittest.TestCase):
             preparar_item("Bar", detalhes={"telefone": "javascript:1"})
         with self.assertRaises(ValueError):
             preparar_item("Café", "produto", detalhes={"telefone": "(11) 98765-4321"})
+
+    def test_resumo_notas_zero_conta_ausencia_nao(self):
+        self.assertEqual(resumo_notas([0, 4.5, None]), {"media": 2.25, "avaliadas": 2, "experiencias": 3})
+        self.assertEqual(resumo_notas([None]), {"media": None, "avaliadas": 0, "experiencias": 1})
+        self.assertEqual(resumo_notas([]), {"media": None, "avaliadas": 0, "experiencias": 0})
 
     def test_preparar_busca_valida_filtros(self):
         busca = preparar_busca(" coxinha ", "lugar", "0", "3,5")

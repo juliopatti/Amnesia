@@ -254,6 +254,8 @@ test('edita item e experiência, reflete na busca e exclui com confirmação', a
   await expect(page.getByRole('link', { name: 'WhatsApp' })).toHaveAttribute('href', 'https://wa.me/5511987654321');
   await expect(page.getByRole('link', { name: /^Ligar/ })).toHaveAttribute('href', 'tel:+5511987654321');
   await expect(page.locator('.experiencias')).toContainText('4,5 / 5');
+  await expect(page.locator('.media-item')).toContainText('4,5');
+  await expect(page.getByRole('img', { name: '4,5 de 5' })).toBeVisible();
 
   for (const [termo, total] of [[`erado ${marcador}`, 0], [`espeto ${marcador}`, 1], [`coxinha ${marcador}`, 0], [`lapa ${marcador}`, 1]]) {
     await page.goto(`/?q=${encodeURIComponent(termo)}`);

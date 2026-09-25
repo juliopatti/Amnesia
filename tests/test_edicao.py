@@ -153,6 +153,14 @@ class TestFormulariosEdicao(unittest.IsolatedAsyncioTestCase):
         self.assertIn('3,5 / 5', detalhe)
         self.assertIn('&lt;Rio&gt;', detalhe)
         self.assertIn('Nenhuma experiência ainda', pagina_item(item, []))
+        experiencias = [{'id': 1, 'data': '2026-01-02', 'nota': 0, 'texto': '', 'voltaria': None},
+                        {'id': 2, 'data': '2026-01-01', 'nota': 4.5, 'texto': '', 'voltaria': None},
+                        {'id': 3, 'data': '2026-01-01', 'nota': None, 'texto': '', 'voltaria': None}]
+        media = pagina_item(item, experiencias)
+        self.assertIn('aria-label="2,25 de 5"', media)
+        self.assertIn('meias-5', media, '2,25 arredonda para 2,5 estrelas no desenho')
+        self.assertIn('média de 3 experiências, 2 com nota', media)
+        self.assertIn('Sem nota', pagina_item(item, experiencias[2:]))
 
     async def test_telefone_vira_acoes_e_entra_na_busca(self):
         binding = BancoSQLite()

@@ -107,6 +107,13 @@ summary span { display: block; font-size: .8rem; font-weight: 400; color: var(--
 .nome-item:hover { text-decoration: underline; }
 .galeria .remover { display: inline-flex; min-height: 44px; align-items: center; font-size: .8rem; }
 .previa-exclusao { display: block; max-width: 100%; max-height: 50vh; border-radius: 12px; margin: 10px 0; }
+.estrelas-leitura { position: relative; display: inline-block; color: #cfc9b8; line-height: 1; white-space: nowrap; }
+.estrelas-leitura .cheias { position: absolute; top: 0; left: 0; overflow: hidden; color: #a8740f; }
+.meias-0 { width: 0%; } .meias-1 { width: 10%; } .meias-2 { width: 20%; } .meias-3 { width: 30%; } .meias-4 { width: 40%; } .meias-5 { width: 50%; } .meias-6 { width: 60%; } .meias-7 { width: 70%; } .meias-8 { width: 80%; } .meias-9 { width: 90%; } .meias-10 { width: 100%; }
+.media-item { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; margin: 0 0 14px; }
+.media-item .estrelas-leitura { font-size: 1.35rem; }
+.numero-media { font-size: 1.35rem; font-weight: 750; }
+.voltaria-resposta strong { color: var(--verde); }
 .contatos { display: flex; flex-wrap: wrap; gap: 8px; margin: 4px 0 12px; }
 .contatos .botao { min-height: 44px; padding: 10px 14px; font-size: .9rem; }
 .experiencias { padding: 0; list-style: none; }
