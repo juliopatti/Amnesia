@@ -162,12 +162,13 @@ Depois, na página inicial:
 Para corrigir algo:
 
 1. Na lista, toque no **nome** do item. A página mostra o item e as experiências.
-2. **Editar item** muda nome, categoria, descrição e detalhes.
+2. **Editar item** muda nome, categoria, descrição e detalhes. **Excluir item** apaga o
+   item com todas as experiências e fotos, depois de mostrar o que vai junto.
 3. Toque numa experiência e use **Editar experiência** ou **Excluir**.
 4. Sob cada foto há **Remover foto**. Nada é apagado sem a tela “Excluir de vez”.
 5. Busque pelo nome antigo e pelo novo: só o novo deve aparecer.
 
-Se apagar a data ao editar, a original é mantida. Ainda não é possível excluir um
+Se apagar a data ao editar, a original é mantida. Ainda não é possível mover uma
 experiência para outro item.
 
 Para cadastrar apenas um item, preencha o nome e use **Só guardar o item, sem
