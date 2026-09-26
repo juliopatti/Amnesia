@@ -1,6 +1,9 @@
 """Adaptador D1. O domínio não depende dos objetos JavaScript deste binding."""
 
 import json
+import re
+from urllib.parse import urlencode
+from uuid import uuid4
 
 from dominio import MAX_FOTOS
 
@@ -189,7 +192,7 @@ class ArmazenamentoD1:
 
     async def listar_fotos_do_item(self, item_id):
         return await self.consultar("""
-            SELECT f.id, f.chave_r2 FROM fotos f JOIN experiencias e ON e.id = f.experiencia_id
+            SELECT f.id, f.chave_r2, f.arquivo FROM fotos f JOIN experiencias e ON e.id = f.experiencia_id
             WHERE e.item_id = ? ORDER BY f.id
         """, (item_id,))
 
@@ -219,14 +222,14 @@ class ArmazenamentoD1:
         linhas = await self.consultar("SELECT * FROM fotos WHERE chave_r2 = ?", (chave,))
         return linhas[0] if linhas else None
 
-    async def salvar_foto(self, experiencia_id, chave, tamanho):
+    async def salvar_foto(self, experiencia_id, chave, tamanho, arquivo):
         resultados = await self.banco.batch([
             self.comando("""
-                INSERT INTO fotos (experiencia_id, chave_r2, tipo_mime, tamanho_bytes, ordem)
-                SELECT ?, ?, 'image/jpeg', ?, count(*) FROM fotos
+                INSERT INTO fotos (experiencia_id, chave_r2, tipo_mime, tamanho_bytes, ordem, arquivo)
+                SELECT ?, ?, 'image/jpeg', ?, count(*), ? FROM fotos
                 WHERE experiencia_id = ? HAVING count(*) < ?
                 ON CONFLICT(chave_r2) DO NOTHING
-            """, (experiencia_id, chave, tamanho, experiencia_id, MAX_FOTOS)),
+            """, (experiencia_id, chave, tamanho, arquivo, experiencia_id, MAX_FOTOS)),
             self.comando("SELECT * FROM fotos WHERE chave_r2 = ?", (chave,)),
         ])
         linhas = resultados[-1]["results"]
@@ -236,14 +239,92 @@ class ArmazenamentoD1:
 
 
 class ArmazenamentoR2:
+    """Fotos no R2 simulado do desenvolvimento local e dos testes; a referência é a chave."""
     def __init__(self, bucket):
         self.bucket = bucket
 
     async def salvar(self, chave, conteudo):
         await self.bucket.put(chave, conteudo, {"httpMetadata": {"contentType": "image/jpeg"}})
+        return chave
 
-    async def excluir(self, chave):
-        await self.bucket.delete(chave)
+    async def excluir(self, arquivo):
+        await self.bucket.delete(arquivo)
 
-    async def obter(self, chave):
-        return await self.bucket.get(chave)
+    async def obter(self, arquivo):
+        objeto = await self.bucket.get(arquivo)
+        # A SDK entrega o ArrayBuffer do binding como memoryview.
+        return None if objeto is None else bytes(await objeto.arrayBuffer())
+
+
+class ErroDrive(Exception):
+    """Falha na API do Drive. A mensagem traz só a etapa e o status, nunca o corpo da resposta."""
+
+
+class ArmazenamentoDrive:
+    """Fotos numa pasta privada do Google Drive do dono, pela API REST.
+
+    O escopo drive.file só enxerga arquivos criados pelo próprio app. `requisitar` faz o
+    HTTP (fetch no Worker, dublê nos testes) e devolve (status, bytes); `cache` guarda o
+    token de acesso entre requisições do mesmo isolate; `relogio` devolve segundos.
+    """
+    TOKEN = "https://oauth2.googleapis.com/token"
+    ARQUIVOS = "https://www.googleapis.com/drive/v3/files"
+    ENVIO = "https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id"
+
+    def __init__(self, credenciais, pasta, requisitar, relogio, cache):
+        self.credenciais, self.pasta = credenciais, pasta
+        self.requisitar, self.relogio, self.cache = requisitar, relogio, cache
+
+    async def _token(self):
+        agora = self.relogio()
+        if self.cache.get("token") and self.cache.get("expira", 0) > agora + 60:
+            return self.cache["token"]
+        corpo = urlencode({**self.credenciais, "grant_type": "refresh_token"}).encode()
+        status, resposta = await self.requisitar(
+            "POST", self.TOKEN, {"Content-Type": "application/x-www-form-urlencoded"}, corpo)
+        if status != 200:
+            raise ErroDrive(f"Token do Google recusado ({status}).")
+        dados = json.loads(resposta)
+        self.cache.update(token=dados["access_token"], expira=agora + int(dados.get("expires_in", 0)))
+        return dados["access_token"]
+
+    async def _chamar(self, metodo, url, cabecalhos=None, corpo=None):
+        for tentativa in (1, 2):
+            token = await self._token()
+            status, resposta = await self.requisitar(
+                metodo, url, {"Authorization": f"Bearer {token}", **(cabecalhos or {})}, corpo)
+            if status != 401 or tentativa == 2:
+                return status, resposta
+            # Token revogado ou expirado antes da hora: pede outro uma vez.
+            self.cache.clear()
+
+    def _url(self, arquivo):
+        if not isinstance(arquivo, str) or not re.fullmatch(r"[A-Za-z0-9_-]{10,200}", arquivo):
+            raise ErroDrive("Referência de arquivo inválida.")
+        return f"{self.ARQUIVOS}/{arquivo}"
+
+    async def salvar(self, chave, conteudo):
+        fronteira = f"amnesia-{uuid4().hex}"
+        metadados = json.dumps({"name": chave.replace("/", "-"), "parents": [self.pasta],
+                                "mimeType": "image/jpeg", "appProperties": {"chave": chave}})
+        corpo = (f"--{fronteira}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n{metadados}\r\n"
+                 f"--{fronteira}\r\nContent-Type: image/jpeg\r\n\r\n").encode() + conteudo + f"\r\n--{fronteira}--\r\n".encode()
+        status, resposta = await self._chamar(
+            "POST", self.ENVIO, {"Content-Type": f"multipart/related; boundary={fronteira}"}, corpo)
+        if status != 200:
+            raise ErroDrive(f"Envio ao Drive recusado ({status}).")
+        return json.loads(resposta)["id"]
+
+    async def obter(self, arquivo):
+        status, resposta = await self._chamar("GET", f"{self._url(arquivo)}?alt=media")
+        if status == 404:
+            return None
+        if status != 200:
+            raise ErroDrive(f"Leitura no Drive recusada ({status}).")
+        return resposta
+
+    async def excluir(self, arquivo):
+        status, _ = await self._chamar("DELETE", self._url(arquivo))
+        # 404: o arquivo já não existe, que é o resultado desejado.
+        if status not in (200, 204, 404):
+            raise ErroDrive(f"Exclusão no Drive recusada ({status}).")

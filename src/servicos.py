@@ -60,16 +60,20 @@ async def anexar_foto(armazenamento, arquivos, experiencia_id, chave, conteudo, 
     existente = await armazenamento.foto_por_chave(chave_r2)
     if existente:
         return existente
-    await arquivos.salvar(chave_r2, conteudo)
+    # O armazenamento devolve a referência do arquivo: a própria chave no R2, um id no Drive.
+    arquivo = await arquivos.salvar(chave_r2, conteudo)
     try:
-        return await armazenamento.salvar_foto(experiencia_id, chave_r2, len(conteudo))
+        foto = await armazenamento.salvar_foto(experiencia_id, chave_r2, len(conteudo), arquivo)
     except Exception:
         # Uma resposta perdida ou envio concorrente pode já ter confirmado a foto.
-        existente = await armazenamento.foto_por_chave(chave_r2)
-        if existente:
-            return existente
-        await arquivos.excluir(chave_r2)
-        raise
+        foto = await armazenamento.foto_por_chave(chave_r2)
+        if not foto:
+            await arquivos.excluir(arquivo)
+            raise
+    if foto["arquivo"] != arquivo:
+        # Envio concorrente com a mesma chave: no Drive cada envio cria um arquivo; fica o primeiro.
+        await _excluir_arquivos(arquivos, [arquivo])
+    return foto
 
 
 async def editar_item(armazenamento, item_id, dados):
@@ -91,7 +95,7 @@ async def editar_experiencia(armazenamento, experiencia_id, dados, instante):
 
 
 async def _excluir_arquivos(arquivos, chaves):
-    """R2 e D1 não têm transação conjunta: o banco já foi atualizado; falhas viram objetos órfãos."""
+    """O armazenamento de fotos e o D1 não têm transação conjunta: o banco já foi atualizado; falhas viram objetos órfãos."""
     orfaos = 0
     for chave in chaves:
         try:
@@ -107,7 +111,7 @@ async def excluir_experiencia(armazenamento, arquivos, experiencia_id):
         raise LookupError("Essa experiência não foi encontrada.")
     fotos = await armazenamento.listar_fotos(experiencia_id)
     await armazenamento.excluir_experiencia(experiencia_id, experiencia["item_id"])
-    orfaos = await _excluir_arquivos(arquivos, [foto["chave_r2"] for foto in fotos])
+    orfaos = await _excluir_arquivos(arquivos, [foto["arquivo"] for foto in fotos])
     return {"item_id": experiencia["item_id"], "orfaos": orfaos}
 
 
@@ -117,7 +121,7 @@ async def excluir_item(armazenamento, arquivos, item_id):
         raise LookupError("Esse item não foi encontrado.")
     fotos = await armazenamento.listar_fotos_do_item(item_id)
     await armazenamento.excluir_item(item_id)
-    return {"orfaos": await _excluir_arquivos(arquivos, [foto["chave_r2"] for foto in fotos])}
+    return {"orfaos": await _excluir_arquivos(arquivos, [foto["arquivo"] for foto in fotos])}
 
 
 async def excluir_foto(armazenamento, arquivos, foto_id):
@@ -125,5 +129,5 @@ async def excluir_foto(armazenamento, arquivos, foto_id):
     if not foto:
         raise LookupError("Essa foto não foi encontrada.")
     await armazenamento.excluir_foto(foto_id)
-    orfaos = await _excluir_arquivos(arquivos, [foto["chave_r2"]])
+    orfaos = await _excluir_arquivos(arquivos, [foto["arquivo"]])
     return {"experiencia_id": foto["experiencia_id"], "orfaos": orfaos}

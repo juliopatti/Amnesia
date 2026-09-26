@@ -2,15 +2,16 @@
 
 from datetime import datetime, timezone
 import re
+import time
 from urllib.parse import parse_qs, quote, urlsplit
 from uuid import uuid4
 
 import js
 from pyodide.ffi import to_js
-from workers import Response, WorkerEntrypoint
+from workers import Response, WorkerEntrypoint, fetch
 
 from acesso import DURACAO_SESSAO, MIN_SEGREDO, criar_sessao, destino_seguro, ler_registro, sessao_valida
-from armazenamento import ArmazenamentoD1, ArmazenamentoR2
+from armazenamento import ArmazenamentoD1, ArmazenamentoDrive, ArmazenamentoR2, ErroDrive
 from dominio import (CATEGORIA_PADRAO, MAX_BUSCA, MAX_FOTO_BYTES, campos_da_categoria, categoria_raiz, categoria_valida,
                      horario_local, preco_em_centavos)
 from paginas import (pagina_entrar, pagina_indisponivel, pagina_inicial, formulario, confirmacao, pagina_item, formulario_item,
@@ -21,6 +22,8 @@ from servicos import (entrar, verificar_base, buscar, criar_item, registrar_expe
 
 ESTATICOS = ("/estilo.css", "/fotos.js", "/htmx.min.js", "/seta.svg")
 COOKIE_SESSAO = "sessao"
+# Token de acesso do Drive reaproveitado entre requisições do mesmo isolate.
+CACHE_DRIVE = {}
 RECURSO = re.compile(r"/(itens|experiencias|fotos)/([^/]+)(?:/(editar|excluir))?")
 CABECALHOS = {
     "Cache-Control": "no-store", "X-Content-Type-Options": "nosniff",
@@ -63,6 +66,27 @@ def cookie_sessao(request, valor, duracao):
     # Secure só fora do http local de desenvolvimento e testes.
     seguro = "; Secure" if urlsplit(request.url).scheme == "https" else ""
     return f"{COOKIE_SESSAO}={valor}; Path=/; HttpOnly; SameSite=Lax; Max-Age={duracao}{seguro}"
+
+
+async def requisitar(metodo, url, cabecalhos, corpo=None):
+    """HTTP de saída para o adaptador do Drive: devolve (status, bytes)."""
+    opcoes = {"method": metodo, "headers": cabecalhos}
+    if corpo is not None:
+        opcoes["body"] = to_js(corpo)
+    resposta = await fetch(url, **opcoes)
+    return resposta.status, await resposta.bytes()
+
+
+def armazenamento_fotos(env):
+    """R2 simulado no computador e nos testes; Drive na publicação, que não tem o binding FOTOS."""
+    if getattr(env, "FOTOS", None) is not None:
+        return ArmazenamentoR2(env.FOTOS)
+    nomes = ("GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET", "GOOGLE_REFRESH_TOKEN", "GOOGLE_PASTA_ID")
+    valores = [getattr(env, nome, None) for nome in nomes]
+    if not all(valores):
+        raise RuntimeError("Armazenamento de fotos não configurado.")
+    credenciais = dict(zip(("client_id", "client_secret", "refresh_token"), valores[:3]))
+    return ArmazenamentoDrive(credenciais, valores[3], requisitar, time.time, CACHE_DRIVE)
 
 
 def configuracao_login(env):
@@ -165,7 +189,7 @@ class Default(WorkerEntrypoint):
     async def recurso(self, request, banco, instante, tipo, texto_id, acao):
         """Páginas, edição e exclusão de itens, experiências e fotos. None significa rota inexistente."""
         registro_id = identificador(texto_id)
-        arquivos = ArmazenamentoR2(self.env.FOTOS)
+        arquivos = armazenamento_fotos(self.env)
         valores = None
         if request.method == "POST":
             if acao is None:
@@ -221,16 +245,18 @@ class Default(WorkerEntrypoint):
                     f"/experiencias/{registro_id}/excluir", f"/experiencias/{registro_id}"))
             resultado = await excluir_experiencia(banco, arquivos, registro_id)
             if resultado["orfaos"]:
-                print("Fotos não removidas do R2:", resultado["orfaos"])
+                print("Fotos não removidas do armazenamento:", resultado["orfaos"])
             return redirecionar(f"/itens/{resultado['item_id']}")
         foto = await banco.obter_foto(registro_id)
         if not foto:
             raise LookupError("Essa foto não foi encontrada.")
         if acao is None:
-            objeto = await arquivos.obter(foto["chave_r2"])
-            if objeto is None:
+            conteudo = await arquivos.obter(foto["arquivo"])
+            if conteudo is None:
                 raise LookupError("Essa foto não foi encontrada.")
-            return Response(objeto.body, headers={**CABECALHOS, "Content-Type": "image/jpeg"})
+            # A foto de um id nunca muda; o navegador guarda por um dia e poupa o Drive.
+            return Response(conteudo, headers={**CABECALHOS, "Content-Type": "image/jpeg",
+                                               "Cache-Control": "private, max-age=86400"})
         if acao != "excluir":
             return None
         if valores is None:
@@ -239,7 +265,7 @@ class Default(WorkerEntrypoint):
                 f"/fotos/{registro_id}/excluir", f"/experiencias/{foto['experiencia_id']}", previa))
         resultado = await excluir_foto(banco, arquivos, registro_id)
         if resultado["orfaos"]:
-            print("Foto não removida do R2:", resultado["orfaos"])
+            print("Foto não removida do armazenamento:", resultado["orfaos"])
         return redirecionar(f"/experiencias/{resultado['experiencia_id']}")
 
     async def acesso(self, request, banco, instante, configuracao):
@@ -335,7 +361,7 @@ class Default(WorkerEntrypoint):
             elif caminho.startswith("/uploads/"):
                 experiencia_id = identificador(caminho.removeprefix("/uploads/"))
                 conteudo = await ler_corpo(request, MAX_FOTO_BYTES)
-                foto = await anexar_foto(banco, ArmazenamentoR2(self.env.FOTOS), experiencia_id,
+                foto = await anexar_foto(banco, armazenamento_fotos(self.env), experiencia_id,
                     request.headers.get("X-Chave-Foto", ""), conteudo, request.headers.get("Content-Type", ""))
                 return resposta_json({"id": foto["id"], "url": f"/fotos/{foto['id']}"})
         except LookupError as erro:
@@ -344,6 +370,7 @@ class Default(WorkerEntrypoint):
             return resposta_json({"erro": str(erro)}, 400)
         except Exception as erro:
             # Mensagens do binding podem conter SQL/dados pessoais: registrar só o tipo.
-            print("Falha na operação:", type(erro).__name__)
+            # Exceção: ErroDrive traz só a etapa e o status HTTP, úteis para diagnosticar a publicação.
+            print("Falha na operação:", type(erro).__name__, erro if isinstance(erro, ErroDrive) else "")
             return resposta_json({"erro": "Não foi possível concluir. Tente novamente; o mesmo envio não duplica o registro."}, 503)
         return Response("Essa lembrança não está aqui.", status=404, headers=CABECALHOS)

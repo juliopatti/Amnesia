@@ -263,7 +263,8 @@ para a entrega publicada. Também não houve teste em Safari/iPhone nesta etapa.
 | --- | --- |
 | `src/dominio.py` | Validações, normalizações e montagem segura da consulta de busca |
 | `src/servicos.py` | Buscar, criar, editar e excluir; dependências injetadas |
-| `src/armazenamento.py` | SQL parametrizado, transações D1, projeção e consulta FTS, adaptador R2 |
+| `src/armazenamento.py` | SQL parametrizado, transações D1, projeção e consulta FTS, fotos no R2 local ou no Google Drive |
+| `src/acesso.py` | Hash da senha, sessão assinada e destino seguro após o login |
 | `src/worker.py` | Rotas HTTP, limites de corpo e checagem de origem |
 | `src/paginas.py` | HTML com escape de valores |
 | `static/` | CSS, ícone da seta dos selects, htmx local e JavaScript de formulário/fotos |
@@ -310,7 +311,11 @@ maior que o máximo) retornam 422 com a mensagem na própria página; o htmx foi
 configurado para exibir essa resposta. A média é calculada a cada consulta, o que
 serve para um caderno pessoal; o desempenho com muitos registros ainda será medido.
 
-Fotos usam uma segunda requisição. R2 e D1 não têm transação conjunta: se a gravação
+Fotos usam uma segunda requisição. No computador e nos testes ficam no R2 simulado; na
+publicação, sem o binding `FOTOS`, vão para a pasta do Google Drive. O banco guarda em
+`fotos.arquivo` a referência devolvida pelo armazenamento (a chave no R2, o id no Drive).
+Se dois envios iguais chegarem juntos, o Drive cria dois arquivos: fica o primeiro
+registrado e o outro é apagado. O armazenamento de fotos e o D1 não têm transação conjunta: se a gravação
 dos metadados falha, o serviço tenta remover o objeto enviado. Falha simultânea de
 D1 e R2 pode deixar objeto órfão; reconciliação automática ainda não está implementada.
 Na exclusão, o banco é alterado primeiro, num único lote com a FTS, e só depois o

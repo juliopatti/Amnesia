@@ -77,6 +77,7 @@ class ArquivosMemoria:
         if self.falhar:
             raise OSError('Falha de upload simulada')
         self.arquivos[chave] = conteudo
+        return chave
 
     async def excluir(self, chave):
         if self.falhar_exclusao:
