@@ -368,6 +368,9 @@ test('login protege páginas, fotos e envios; sair encerra a sessão', async ({ 
   try {
     const saude = await page.request.get('/saude');
     expect(await saude.json()).toEqual({ estado: 'ok' });
+    const privacidade = await page.request.get('/privacidade', { maxRedirects: 0 });
+    expect(privacidade.status()).toBe(200);
+    expect(await privacidade.text()).toContain('drive.file');
     for (const protegido of ['/', '/registrar', '/itens/1', '/fotos/1']) {
       const resposta = await page.request.get(protegido, { maxRedirects: 0 });
       expect(resposta.status()).toBe(303);

@@ -481,9 +481,22 @@ def pagina_entrar(volta="/", erro=""):
         <input id="senha" name="senha" type="password" autocomplete="current-password" required
             maxlength="200" autofocus>
         <div class="acoes"><button class="botao principal" type="submit">Entrar</button></div>
-        </form>""", "Entrar", publica=True)
+        </form><p class="muted"><a href="/privacidade">Privacidade</a></p>""", "Entrar", publica=True)
 
 
 def pagina_indisponivel(mensagem):
     return estrutura(f'<h1 class="titulo-form">Fechado para balanço<span>.</span></h1>{aviso_erro(mensagem)}',
                      "Indisponível", publica=True)
+
+
+def pagina_privacidade():
+    """Pública: o Google exige o link para liberar o acesso ao Drive em produção."""
+    return estrutura("""<h1 class="titulo-form">Privacidade<span>.</span></h1>
+        <p>O amnesia é um caderno pessoal, usado por uma única pessoa, que entra com senha própria.
+        Não há cadastro de outras pessoas, anúncios, rastreadores nem venda ou compartilhamento de dados.</p>
+        <p>Os textos ficam num banco de dados na Cloudflare. As fotos ficam numa pasta privada do
+        Google Drive da própria pessoa. O acesso ao Drive usa só a permissão <code>drive.file</code>:
+        o app lê, grava e apaga apenas os arquivos que ele mesmo criou nessa pasta, e nada mais do Drive.</p>
+        <p>A autorização pode ser revogada a qualquer momento em
+        <a href="https://myaccount.google.com/permissions" rel="noopener noreferrer">myaccount.google.com/permissions</a>.</p>
+        <p><a href="/entrar">Entrar</a></p>""", "Privacidade", publica=True)

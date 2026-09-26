@@ -14,8 +14,8 @@ from acesso import DURACAO_SESSAO, MIN_SEGREDO, criar_sessao, destino_seguro, le
 from armazenamento import ArmazenamentoD1, ArmazenamentoDrive, ArmazenamentoR2, ErroDrive
 from dominio import (CATEGORIA_PADRAO, MAX_BUSCA, MAX_FOTO_BYTES, campos_da_categoria, categoria_raiz, categoria_valida,
                      horario_local, preco_em_centavos)
-from paginas import (pagina_entrar, pagina_indisponivel, pagina_inicial, formulario, confirmacao, pagina_item, formulario_item,
-                     formulario_experiencia, confirmar_exclusao, texto_vai_junto, valores_item, valores_experiencia)
+from paginas import (pagina_entrar, pagina_indisponivel, pagina_inicial, pagina_privacidade, formulario,
+                     confirmacao, pagina_item, formulario_item, formulario_experiencia, confirmar_exclusao, texto_vai_junto, valores_item, valores_experiencia)
 from servicos import (entrar, verificar_base, buscar, criar_item, registrar_experiencia, anexar_foto,
                       editar_item, editar_experiencia, excluir_experiencia, excluir_foto, excluir_item)
 
@@ -308,6 +308,8 @@ class Default(WorkerEntrypoint):
                 # Sem sessão, só confirma que o banco responde; contagens são dados do caderno.
                 base = await verificar_base(banco, instante)
                 return resposta_json(base if logado else {"estado": base["estado"]})
+            if caminho == "/privacidade" and request.method == "GET":
+                return html(pagina_privacidade())
             if configuracao is None:
                 return html(pagina_indisponivel("O login ainda não foi configurado. Veja o README."), 503)
             if resposta := await self.acesso(request, banco, instante, configuracao):
