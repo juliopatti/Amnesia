@@ -30,6 +30,20 @@ class ArmazenamentoD1:
         """)
         return linhas[0]
 
+    async def contar_falhas_login(self, desde):
+        linhas = await self.consultar("SELECT count(*) AS falhas FROM falhas_login WHERE instante >= ?", (desde,))
+        return linhas[0]["falhas"]
+
+    async def registrar_falha_login(self, instante, apagar_antes):
+        # Mesmo offset -03:00 em todas as linhas: comparar o texto equivale a comparar o horário.
+        await self.banco.batch([
+            self.comando("INSERT INTO falhas_login (instante) VALUES (?)", (instante,)),
+            self.comando("DELETE FROM falhas_login WHERE instante < ?", (apagar_antes,)),
+        ])
+
+    async def limpar_falhas_login(self):
+        await self.banco.batch([self.comando("DELETE FROM falhas_login")])
+
     async def buscar_itens(self, busca, pagina=1, por_pagina=20):
         """Um resultado por item: a FTS tem um documento por item e a média é agregada antes.
 

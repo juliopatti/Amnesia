@@ -72,7 +72,8 @@ test('produto, campos extras, validação preserva texto e filtro htmx', async (
 });
 
 test('item avulso funciona sem JavaScript e conteúdo é escapado', async ({ browser }) => {
-  const contexto = await browser.newContext({ javaScriptEnabled: false, baseURL: origem, viewport: { width: 390, height: 844 } });
+  const contexto = await browser.newContext({ javaScriptEnabled: false, baseURL: origem, viewport: { width: 390, height: 844 },
+    storageState: '.wrangler/test-state/sessao-e2e.json' });
   const page = await contexto.newPage();
   try {
     await page.goto('/registrar');
@@ -358,4 +359,44 @@ test('layout mobile sem rolagem horizontal e controles rotulados', async ({ page
   expect(semRotulo).toEqual([]);
   await page.goto('/registrar');
   await page.screenshot({ path: 'test-results/cadastro-mobile.png', fullPage: true });
+});
+
+test('login protege páginas, fotos e envios; sair encerra a sessão', async ({ browser }) => {
+  const contexto = await browser.newContext({ baseURL: origem, storageState: { cookies: [], origins: [] } });
+  const page = await contexto.newPage();
+  page.on('pageerror', erro => errosPagina.push(erro.message));
+  try {
+    const saude = await page.request.get('/saude');
+    expect(await saude.json()).toEqual({ estado: 'ok' });
+    for (const protegido of ['/', '/registrar', '/itens/1', '/fotos/1']) {
+      const resposta = await page.request.get(protegido, { maxRedirects: 0 });
+      expect(resposta.status()).toBe(303);
+      expect(resposta.headers()['location']).toMatch(/^\/entrar\?volta=/);
+    }
+    const envio = await page.request.post('/registros', { form: { nome: 'Intruso' }, headers: { Origin: origem } });
+    expect(envio.status()).toBe(401);
+    const externo = await page.request.post('/entrar', { form: { senha: 'x' }, headers: { Origin: 'https://outro.example' } });
+    expect(externo.status()).toBe(403);
+
+    await page.goto('/registrar?categoria=filme');
+    await expect(page).toHaveURL(/\/entrar\?volta=/);
+    await expect(page.locator('#q')).toHaveCount(0);
+    await page.getByLabel('Senha').fill('senha-errada');
+    await page.getByRole('button', { name: 'Entrar' }).click();
+    await expect(page.getByRole('alert')).toContainText('Senha incorreta');
+    await page.getByLabel('Senha').fill('senha-de-teste-e2e');
+    await page.getByRole('button', { name: 'Entrar' }).click();
+    await expect(page).toHaveURL(/\/registrar\?categoria=filme$/);
+    await expect(page.getByLabel('O que é?')).toHaveValue('filme');
+    const cookie = (await contexto.cookies()).find(c => c.name === 'sessao');
+    expect(cookie.httpOnly).toBeTruthy();
+    expect(cookie.sameSite).toBe('Lax');
+
+    await page.getByRole('button', { name: 'Sair' }).click();
+    await expect(page).toHaveURL(/\/entrar$/);
+    await page.goto('/');
+    await expect(page).toHaveURL(/\/entrar\?volta=/);
+  } finally {
+    await contexto.close();
+  }
 });

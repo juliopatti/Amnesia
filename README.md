@@ -123,21 +123,35 @@ cp -r .wrangler/state .wrangler/state-copia-$(date +%Y%m%d-%H%M)
 `wrangler.jsonc` é proposital para esta fase. Não precisa criar D1 no painel.
 O R2 local também é simulado pela ferramenta, sem conta ou assinatura.
 
-### 5. Ligue o app
+### 5. Crie a senha do app local
+
+O app pede senha em todas as páginas. Crie a do computador uma vez:
+
+```bash
+python3 scripts/senha.py --dev-vars
+```
+
+Digite uma senha de 12 caracteres ou mais, duas vezes; ela não aparece na tela.
+O script grava em `.dev.vars` (ignorado pelo Git) só o hash da senha e um segredo de
+sessão. Pode ser a mesma senha da versão publicada ou outra.
+
+### 6. Ligue o app
 
 ```bash
 uv run pywrangler dev
 ```
 
 Espere aparecer `Ready on http://localhost:8787` ou o endereço informado pela
-ferramenta. Abra <http://localhost:8787> no navegador do computador e mantenha o
-terminal aberto. Pressione **Ctrl+C** quando quiser desligar. Os dados permanecem.
+ferramenta. Abra <http://localhost:8787> no navegador do computador, entre com a
+senha do passo 5 e mantenha o terminal aberto. A sessão dura 30 dias; **Sair** fica
+no rodapé. Pressione **Ctrl+C** quando quiser desligar. Os dados permanecem.
 
 Se a porta estiver ocupada, use `uv run pywrangler dev --port 8788` e abra a porta
-8788. Se o app mostrar erro de banco, confira o passo 4 e reinicie o servidor.
+8788. Se o app mostrar erro de banco, confira o passo 4 e reinicie o servidor. Se mostrar
+“O login ainda não foi configurado”, faça o passo 5 e reinicie.
 A instalação inicial das ferramentas e do runtime precisa de internet.
 
-### 6. Experimente o cadastro, a busca e a edição
+### 7. Experimente o cadastro, a busca e a edição
 
 1. Clique em **Registrar experiência**.
 2. Digite um nome, por exemplo “Bar de teste”.
@@ -204,7 +218,8 @@ npm run test:e2e
 ```
 
 O Playwright inicia e encerra o Worker na porta **8790**, usando D1 e R2 locais em
-`.wrangler/test-state/`. A porta precisa estar livre. Seus registros de desenvolvimento
+`.wrangler/test-state/`. O Worker de teste recebe uma senha fictícia pela
+configuração do Playwright, e todos os cenários entram com ela antes de começar. A porta precisa estar livre. Seus registros de desenvolvimento
 em `.wrangler/state/` não são usados. Os dados fictícios podem permanecer entre
 execuções; os testes geram nomes únicos.
 

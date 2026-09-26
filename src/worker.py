@@ -2,20 +2,25 @@
 
 from datetime import datetime, timezone
 import re
-from urllib.parse import parse_qs, urlsplit
+from urllib.parse import parse_qs, quote, urlsplit
 from uuid import uuid4
 
+import js
+from pyodide.ffi import to_js
 from workers import Response, WorkerEntrypoint
 
+from acesso import DURACAO_SESSAO, MIN_SEGREDO, criar_sessao, destino_seguro, ler_registro, sessao_valida
 from armazenamento import ArmazenamentoD1, ArmazenamentoR2
 from dominio import (CATEGORIA_PADRAO, MAX_BUSCA, MAX_FOTO_BYTES, campos_da_categoria, categoria_raiz, categoria_valida,
                      horario_local, preco_em_centavos)
-from paginas import (pagina_inicial, formulario, confirmacao, pagina_item, formulario_item,
+from paginas import (pagina_entrar, pagina_indisponivel, pagina_inicial, formulario, confirmacao, pagina_item, formulario_item,
                      formulario_experiencia, confirmar_exclusao, texto_vai_junto, valores_item, valores_experiencia)
-from servicos import (verificar_base, buscar, criar_item, registrar_experiencia, anexar_foto,
+from servicos import (entrar, verificar_base, buscar, criar_item, registrar_experiencia, anexar_foto,
                       editar_item, editar_experiencia, excluir_experiencia, excluir_foto, excluir_item)
 
 
+ESTATICOS = ("/estilo.css", "/fotos.js", "/htmx.min.js", "/seta.svg")
+COOKIE_SESSAO = "sessao"
 RECURSO = re.compile(r"/(itens|experiencias|fotos)/([^/]+)(?:/(editar|excluir))?")
 CABECALHOS = {
     "Cache-Control": "no-store", "X-Content-Type-Options": "nosniff",
@@ -32,8 +37,44 @@ def resposta_json(conteudo, status=200):
     return Response.from_json(conteudo, status=status, headers=CABECALHOS)
 
 
-def redirecionar(url):
-    return Response("", status=303, headers={**CABECALHOS, "Location": url})
+def redirecionar(url, cookie=None):
+    extras = {"Set-Cookie": cookie} if cookie else {}
+    return Response("", status=303, headers={**CABECALHOS, "Location": url, **extras})
+
+
+async def pbkdf2_webcrypto(senha, sal, iteracoes):
+    """hashlib.pbkdf2_hmac não existe no runtime; o PBKDF2 do WebCrypto dá o mesmo resultado."""
+    sutil = js.crypto.subtle
+    chave = await sutil.importKey("raw", to_js(senha), "PBKDF2", False, to_js(["deriveBits"]))
+    algoritmo = to_js({"name": "PBKDF2", "hash": "SHA-256", "salt": to_js(sal), "iterations": iteracoes},
+                      dict_converter=js.Object.fromEntries)
+    return bytes(js.Uint8Array.new(await sutil.deriveBits(algoritmo, chave, 256)).to_py())
+
+
+def ler_cookie(request, nome):
+    for parte in request.headers.get("Cookie", "").split(";"):
+        chave, _, valor = parte.strip().partition("=")
+        if chave == nome:
+            return valor
+    return None
+
+
+def cookie_sessao(request, valor, duracao):
+    # Secure só fora do http local de desenvolvimento e testes.
+    seguro = "; Secure" if urlsplit(request.url).scheme == "https" else ""
+    return f"{COOKIE_SESSAO}={valor}; Path=/; HttpOnly; SameSite=Lax; Max-Age={duracao}{seguro}"
+
+
+def configuracao_login(env):
+    """Sem senha ou segredo válidos o app fica fechado, nunca aberto."""
+    registro, segredo = getattr(env, "SENHA_HASH", None), getattr(env, "SEGREDO_SESSAO", None)
+    if not registro or not segredo or len(segredo) < MIN_SEGREDO:
+        return None
+    try:
+        ler_registro(registro)
+    except ValueError:
+        return None
+    return registro, segredo
 
 
 def identificador(valor):
@@ -201,6 +242,28 @@ class Default(WorkerEntrypoint):
             print("Foto não removida do R2:", resultado["orfaos"])
         return redirecionar(f"/experiencias/{resultado['experiencia_id']}")
 
+    async def acesso(self, request, banco, instante, configuracao):
+        """Login e saída. None quando a rota não é de acesso."""
+        caminho = urlsplit(request.url).path
+        if caminho == "/entrar" and request.method == "GET":
+            volta = destino_seguro(parse_qs(urlsplit(request.url).query).get("volta", ["/"])[0])
+            return html(pagina_entrar(volta))
+        if caminho == "/entrar":
+            valores = await ler_formulario(request)
+            if valores is None:
+                return resposta_json(FORMATO_RECUSADO, 415)
+            volta = destino_seguro(valores.get("volta", "/"))
+            registro, segredo = configuracao
+            try:
+                await entrar(banco, valores.get("senha", ""), registro, pbkdf2_webcrypto, instante)
+            except PermissionError as erro:
+                return html(pagina_entrar(volta, str(erro)), 401)
+            duracao = int(DURACAO_SESSAO.total_seconds())
+            return redirecionar(volta, cookie_sessao(request, criar_sessao(segredo, instante), duracao))
+        if caminho == "/sair" and request.method == "POST":
+            return redirecionar("/entrar", cookie_sessao(request, "", 0))
+        return None
+
     async def fetch(self, request):
         url = urlsplit(request.url)
         caminho = url.path
@@ -210,17 +273,30 @@ class Default(WorkerEntrypoint):
             return Response("Método não permitido.", status=405, headers={**CABECALHOS, "Allow": "GET, POST"})
         if request.method == "POST" and not origem_permitida(request):
             return resposta_json({"erro": "Envio recusado: abra o formulário neste site."}, 403)
+        if request.method == "GET" and caminho in ESTATICOS:
+            return await self.env.ASSETS.fetch(request)
+        configuracao = configuracao_login(self.env)
+        logado = configuracao is not None and sessao_valida(ler_cookie(request, COOKIE_SESSAO), configuracao[1], instante)
         try:
+            if caminho == "/saude" and request.method == "GET":
+                # Sem sessão, só confirma que o banco responde; contagens são dados do caderno.
+                base = await verificar_base(banco, instante)
+                return resposta_json(base if logado else {"estado": base["estado"]})
+            if configuracao is None:
+                return html(pagina_indisponivel("O login ainda não foi configurado. Veja o README."), 503)
+            if resposta := await self.acesso(request, banco, instante, configuracao):
+                return resposta
+            if not logado:
+                if request.method == "GET":
+                    volta = caminho + (f"?{url.query}" if url.query else "")
+                    return redirecionar(f"/entrar?volta={quote(volta, safe='')}")
+                return resposta_json({"erro": "Sua sessão acabou. Entre de novo e repita o envio."}, 401)
             if encontrado := RECURSO.fullmatch(caminho):
                 resposta = await self.recurso(request, banco, instante, *encontrado.groups())
                 if resposta is not None:
                     return resposta
             elif request.method == "GET":
-                if caminho in ("/estilo.css", "/fotos.js", "/htmx.min.js", "/seta.svg"):
-                    return await self.env.ASSETS.fetch(request)
                 consulta = parse_qs(url.query)
-                if caminho == "/saude":
-                    return resposta_json(await verificar_base(banco, instante))
                 if caminho == "/":
                     return await self.pagina_busca(banco, consulta)
                 if caminho == "/registrar":

@@ -15,7 +15,11 @@ HTMX_CONFIG = ('{"allowEval":false,"includeIndicatorStyles":false,"responseHandl
                '{"code":"422","swap":true},{"code":"[45]..","swap":false,"error":true}]}')
 
 
-def estrutura(conteudo, titulo="Seu caderno", filtros=""):
+def estrutura(conteudo, titulo="Seu caderno", filtros="", publica=False):
+    """Páginas públicas (login) não mostram a busca nem o botão de sair."""
+    busca = "" if publica else (filtros or formulario_busca())
+    sair = "" if publica else ('<form class="sair" action="/sair" method="post">'
+                               '<button class="botao texto-botao" type="submit">Sair</button></form>')
     return f"""<!doctype html>
 <html lang="pt-BR"><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
@@ -26,9 +30,9 @@ def estrutura(conteudo, titulo="Seu caderno", filtros=""):
 </head><body>
 <a class="pular" href="#conteudo">Pular para o conteúdo</a>
 <header><div class="topo"><a class="logo" href="/">amnesia<span aria-hidden="true">.</span></a>
-<span class="selo">só para você</span></div>{filtros or formulario_busca()}</header>
+<span class="selo">só para você</span></div>{busca}</header>
 <main id="conteudo">{conteudo}</main>
-<footer>Uma memória externa. Sem plateia.</footer>
+<footer><span>Uma memória externa. Sem plateia.</span>{sair}</footer>
 </body></html>"""
 
 
@@ -465,3 +469,21 @@ def pagina_item(item, experiencias):
         <a href="/itens/{item['id']}/excluir">Excluir item</a></p>
         <div class="acoes"><a class="botao principal" href="/registrar?item_id={item['id']}">Registrar uma experiência</a></div>
         <h2>Experiências</h2><ul class="experiencias">{lista}</ul>""", item["nome"])
+
+
+def pagina_entrar(volta="/", erro=""):
+    return estrutura(f"""<h1 class="titulo-form">Quem é você<span>?</span></h1>
+        <p class="muted">Este caderno é de uma pessoa só.</p>
+        {aviso_erro(erro)}
+        <form action="/entrar" method="post">
+        <input type="hidden" name="volta" value="{escape(volta)}">
+        <label for="senha">Senha</label>
+        <input id="senha" name="senha" type="password" autocomplete="current-password" required
+            maxlength="200" autofocus>
+        <div class="acoes"><button class="botao principal" type="submit">Entrar</button></div>
+        </form>""", "Entrar", publica=True)
+
+
+def pagina_indisponivel(mensagem):
+    return estrutura(f'<h1 class="titulo-form">Fechado para balanço<span>.</span></h1>{aviso_erro(mensagem)}',
+                     "Indisponível", publica=True)

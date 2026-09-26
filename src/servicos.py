@@ -1,5 +1,6 @@
 """Casos de uso independentes de HTTP; armazenamento injetado nos testes."""
 
+from acesso import JANELA_FALHAS, MAX_FALHAS, senha_confere
 from dominio import (horario_local, preparar_busca, preparar_item, preparar_experiencia,
                      validar_chave, validar_foto)
 
@@ -9,6 +10,18 @@ async def verificar_base(armazenamento, instante):
     contagens = await armazenamento.contar_registros()
     return {"estado": "ok", "verificado_em": horario_local(instante),
             "categorias": categorias, **contagens}
+
+
+async def entrar(armazenamento, senha, registro, derivar, instante):
+    """Falhas contam para todo o app (há uma só pessoa): muitas seguidas bloqueiam por um tempo."""
+    desde = horario_local(instante - JANELA_FALHAS)
+    if await armazenamento.contar_falhas_login(desde) >= MAX_FALHAS:
+        minutos = int(JANELA_FALHAS.total_seconds() // 60)
+        raise PermissionError(f"Muitas tentativas erradas. Espere {minutos} minutos e tente de novo.")
+    if not await senha_confere(senha, registro, derivar):
+        await armazenamento.registrar_falha_login(horario_local(instante), horario_local(instante - JANELA_FALHAS * 4))
+        raise PermissionError("Senha incorreta.")
+    await armazenamento.limpar_falhas_login()
 
 
 async def buscar(armazenamento, criterios, pagina=1, por_pagina=20):
