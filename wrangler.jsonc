@@ -4,7 +4,7 @@
   "main": "src/worker.py",
   "compatibility_date": "2026-09-24",
   "compatibility_flags": ["python_workers"],
-  // Publicação e Access serão configurados no incremento 5.
+  // Configuração principal: desenvolvimento local e testes, sem publicar nada.
   "workers_dev": false,
   "preview_urls": false,
   "assets": {
@@ -12,6 +12,7 @@
     "binding": "ASSETS",
     "run_worker_first": true
   },
+  // R2 só existe no computador (simulado). Na publicação as fotos vão para o Google Drive.
   "r2_buckets": [
     { "binding": "FOTOS", "bucket_name": "amnesia-fotos" }
   ],
@@ -19,9 +20,25 @@
     {
       "binding": "DB",
       "database_name": "amnesia",
-      // Identificador fictício: suficiente para desenvolvimento local.
+      // Identificador fictício: o banco local em .wrangler/state depende dele. Não trocar.
       "database_id": "00000000-0000-0000-0000-000000000000",
       "migrations_dir": "migrations"
     }
-  ]
+  ],
+  "env": {
+    // Publicação: `--env producao`. Sem R2 (exige cartão); senha e Google vêm de segredos.
+    "producao": {
+      "name": "amnesia",
+      "workers_dev": true,
+      "preview_urls": false,
+      "d1_databases": [
+        {
+          "binding": "DB",
+          "database_name": "amnesia",
+          "database_id": "9996efb4-04c2-4af9-977d-58dd3880abe4",
+          "migrations_dir": "migrations"
+        }
+      ]
+    }
+  }
 }
