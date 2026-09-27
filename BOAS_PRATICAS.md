@@ -52,9 +52,9 @@ Um bug corrigido deve ganhar um teste de regressão quando for reproduzível.
 | Integração de escrita | Atomicidade, atualização da FTS, repetição de envio e falhas de upload | Automatizada, incluindo rollback de cadastro, edição e exclusão e reenvio concorrente |
 | Interface e ponta a ponta | Cadastrar, buscar e abrir a linha do tempo pelo navegador | Cadastro, fotos, busca, edição, exclusão e página do item cobertos |
 | Acessibilidade | Rótulos, teclado, foco, contraste, mensagens de erro e seleção das estrelas | Rótulos/teclado testados; revisão visual realizada; auditoria completa pendente |
-| Segurança | Escape de HTML, SQL parametrizado, proteção de escritas, uploads e rotas privadas | Escape (inclusive trechos da busca), SQL, sintaxe FTS, origem e upload cobertos; Access na publicação |
+| Segurança | Escape de HTML, SQL parametrizado, proteção de escritas, uploads e rotas privadas | Escape (inclusive trechos da busca), SQL, sintaxe FTS, origem, upload, login, sessão, bloqueio de tentativas e destino após login cobertos |
 | Desempenho e usabilidade | Registro no celular em menos de 30 s, imagens reduzidas e busca com volume representativo | Medir quando os fluxos estiverem completos |
-| Publicação e recuperação | Login permitido/negado, fotos protegidas e recuperação dos dados | Validar antes da entrega publicada |
+| Publicação e recuperação | Login permitido/negado, fotos protegidas e recuperação dos dados | Login e rotas protegidas no Playwright; adaptador do Drive com dublê; migração conferida no D1 e no Drive reais |
 
 SQLite local e dublês não comprovam compatibilidade com o runtime Cloudflare.
 Um resultado aprovado em uma camada não substitui os testes das demais.
@@ -85,6 +85,7 @@ para ver qual caso falhou. A execução hospedada só será confirmada após ess
 - Segredos ficam em `.env` local ou na configuração da Cloudflare. Versionar apenas
   exemplos sem valores secretos. Revisar o conteúdo antes de publicar.
 - Não confundir código público com aplicativo público: páginas e fotos do app
-  permanecem protegidas pelo Access, com bucket privado.
+  exigem login próprio, e as fotos ficam numa pasta privada do Drive.
+- Antes de migrar ou converter dados reais, copiar `.wrangler/state`.
 - Informar o que foi efetivamente testado e o que ainda depende de validação;
   não tratar uma verificação planejada como concluída.

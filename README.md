@@ -6,7 +6,7 @@ pessoa; repositório de código público durante a avaliação da disciplina.
 [Boas práticas](BOAS_PRATICAS.md) descreve as convenções de código, documentação e
 testes. Nesta fase, os commits vão direto para `main`.
 
-## O que funciona agora — incremento 4
+## O que funciona agora — incremento 5
 
 - Registrar itens em sete categorias: **Bares e restaurantes**, **Lugares** (cidades,
   passeios, turismo), **Produtos**, **Filmes**, **Séries**, **Livros** e **Música**.
@@ -43,7 +43,8 @@ Tocar no nome de um item abre a página dele: **nota média** em estrelas, resum
 “Voltaria?” (quantas respostas foram sim e qual foi a última), descrição, endereço,
 contatos e as experiências da mais recente para a mais antiga, com a miniatura da
 primeira foto. Cada experiência abre na própria página, com tudo o que foi anotado.
-A publicação, com login próprio, é o incremento 5.
+O app está publicado em <https://amnesia.juliopatti.workers.dev>, fechado por senha.
+Veja [Publicação](#publicação).
 
 ## Rodar no seu computador (Linux)
 
@@ -96,7 +97,7 @@ biblioteca de processamento de imagens ou dependência de CDN.
 PYTHONPATH=src python3 -m unittest discover -s tests -v
 ```
 
-Resultado esperado: **83 testes e `OK`**. Esta suíte usa apenas a stdlib,
+Resultado esperado: **103 testes e `OK`**. Esta suíte usa apenas a stdlib,
 não faz chamadas de rede e pode rodar mesmo sem as instalações do passo 2.
 
 ### 4. Prepare ou atualize o banco local
@@ -229,7 +230,8 @@ Para usar o Chrome já instalado no Linux, em vez do Chromium baixado:
 PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/google-chrome npm run test:e2e
 ```
 
-Os 10 cenários verificam cadastro, meia estrela/zero/ausência, teclado, produto,
+Os 11 cenários verificam login (páginas, fotos e envios protegidos, senha errada, volta
+ao destino e saída), cadastro, meia estrela/zero/ausência, teclado, produto,
 campos preservados após erro, htmx, cadastro sem JavaScript, escape de HTML, redução
 real de imagem, falha e repetição de upload, leitura da foto no R2, proteção de
 origem, reenvio concorrente, busca (relato, acentos, filtros, htmx, entradas especiais
@@ -252,10 +254,10 @@ mostra as execuções de cada push. O workflow configura:
 Não exige segredos Cloudflare e não realiza deploy. As dependências são baixadas
 na preparação do runner; os testes do app usam apenas recursos locais.
 
-Validação local do incremento 4 e das categorias: **83 testes offline e 10 cenários de
-navegador aprovados**. O teste automatizado de envio rápido não
-substitui cronometrar uma pessoa usando um celular real; essa validação permanece
-para a entrega publicada. Também não houve teste em Safari/iPhone nesta etapa.
+Validação do incremento 5: **103 testes offline e 11 cenários de navegador aprovados**,
+localmente e no GitHub Actions. O CI não usa a conta Cloudflare nem o Google; o que foi
+validado na publicação real está em [Publicação](#publicação). Não houve teste em
+Safari/iPhone.
 
 ## Organização e decisões técnicas
 
@@ -316,11 +318,11 @@ publicação, sem o binding `FOTOS`, vão para a pasta do Google Drive. O banco 
 `fotos.arquivo` a referência devolvida pelo armazenamento (a chave no R2, o id no Drive).
 Se dois envios iguais chegarem juntos, o Drive cria dois arquivos: fica o primeiro
 registrado e o outro é apagado. O armazenamento de fotos e o D1 não têm transação conjunta: se a gravação
-dos metadados falha, o serviço tenta remover o objeto enviado. Falha simultânea de
-D1 e R2 pode deixar objeto órfão; reconciliação automática ainda não está implementada.
+dos metadados falha, o serviço tenta remover o objeto enviado. Falha simultânea do
+D1 e do armazenamento pode deixar arquivo órfão; reconciliação automática ainda não está implementada.
 Na exclusão, o banco é alterado primeiro, num único lote com a FTS, e só depois o
-objeto sai do R2. Se o R2 falhar, a foto já some do app, mas o arquivo privado fica
-órfão no bucket e o Worker registra só a quantidade no log. As exclusões removem
+arquivo sai do armazenamento. Se ele falhar, a foto já some do app, mas o arquivo privado fica
+órfão (no R2 ou no Drive) e o Worker registra só a quantidade no log. As exclusões removem
 fotos, tags e experiência explicitamente, sem depender de `ON DELETE CASCADE`.
 A edição substitui os campos e as tags e reindexa o item no mesmo `D1.batch`.
 
@@ -329,43 +331,117 @@ validação completa por decodificação de imagem no servidor.
 
 As escritas exigem `Origin` igual ao site e rejeitam requisições marcadas como
 cross-site. SQL usa parâmetros, HTML usa escape e respostas incluem CSP e
-`nosniff`. Fotos são servidas pelo Worker; nenhum bucket público é necessário.
-Isso não substitui autenticação: o login próprio será implementado antes da publicação.
+`nosniff`. Fotos são servidas pelo Worker, só com sessão; nada fica público no Drive.
 
-Stdlib usada no runtime: `datetime`, `decimal`, `html`, `json`, `re`, `urllib.parse`
-e `uuid`. Compatibilidade conferida na [documentação de Python Workers](https://developers.cloudflare.com/workers/languages/python/stdlib/)
+Todas as páginas, fotos e envios exigem login, exceto `/entrar`, `/privacidade`, `/saude`
+(que sem sessão só diz se o banco responde) e os arquivos estáticos. A senha fica no
+segredo `SENHA_HASH` como PBKDF2-SHA256 com 100 mil iterações e sal aleatório.
+`hashlib.pbkdf2_hmac` **não existe** nos Python Workers (conferido no runtime), então o
+Worker usa o PBKDF2 do WebCrypto, que dá o mesmo resultado; os testes e
+`scripts/senha.py` usam hashlib. A sessão é um cookie `HttpOnly`, `SameSite=Lax` e
+`Secure` (em https) com validade e assinatura HMAC; vale 30 dias. Trocar
+`SEGREDO_SESSAO` encerra todas as sessões. Dez senhas erradas em 15 minutos bloqueiam
+o login por 15 minutos; como o app é de uma pessoa, o bloqueio vale para todos. Sem os
+segredos, o app fica fechado, nunca aberto. Depois do login, o destino só pode ser
+um caminho deste site.
+
+Stdlib usada no runtime: `base64`, `datetime`, `decimal`, `hashlib` (só SHA-256),
+`hmac`, `html`, `json`, `re`, `time`, `urllib.parse` e `uuid`. Compatibilidade conferida na [documentação de Python Workers](https://developers.cloudflare.com/workers/languages/python/stdlib/)
 e exercitada no runtime local. Horários usam offset fixo `-03:00`, sem `zoneinfo`.
 SQLite e dublês ajudam a testar SQL e falhas, mas não substituem a integração real.
 
-## Segredos e publicação futura
+## Publicação
 
-`.env`, `.dev.vars`, bancos locais, fotos locais, ambientes e resultados de testes
-estão ignorados pelo Git. `.env.example` tem apenas orientações. Não é necessário
-copiar credenciais de outro projeto. Dados reais não devem entrar no repositório público.
+O app roda em <https://amnesia.juliopatti.workers.dev>, só com serviços que não pedem
+cartão (conferido na documentação de cada um):
 
-### Mudança de plano: publicação sem cartão
+| Parte | Serviço |
+| --- | --- |
+| App e textos | Cloudflare Workers + D1, plano gratuito |
+| Fotos | Pasta privada `amnesia-fotos` no Google Drive do dono, pela API do Drive |
+| Login | Senha própria (acima), segredos do Worker |
+| Endereço | `workers.dev`, gratuito |
 
-O plano original usava R2 para fotos e Cloudflare Access para o login. Os dois exigem
-cartão de crédito cadastrado, mesmo no plano gratuito, o que está fora das
-restrições do projeto. O incremento 5 passa a usar apenas serviços sem cartão:
+R2 e Cloudflare Access, do plano original, exigem cartão mesmo no plano gratuito e
+foram descartados. O R2 continua só como simulação local para desenvolvimento e testes.
 
-| Parte | Antes | Agora |
-| --- | --- | --- |
-| App e textos | Workers + D1 | Workers + D1 no plano gratuito (sem cartão) |
-| Fotos | R2 | Pasta privada no Google Drive do dono, via API do Drive |
-| Login | Cloudflare Access | Login próprio com senha, segredo do Worker e cookie seguro |
-| Endereço | Domínio próprio | `amnesia.<conta>.workers.dev`, gratuito |
+A configuração de publicação é o ambiente `producao` do `wrangler.jsonc`: outro D1, sem
+R2 e com `workers_dev` ligado. Sem `--env producao`, todos os comandos continuam locais.
+O `database_id` de zeros da configuração principal não deve mudar: o banco local em
+`.wrangler/state` depende dele.
 
-A API do Drive não exige conta de cobrança; o armazenamento sai da assinatura Google
-do dono. As fotos continuam atrás de um adaptador (hoje o R2 local), então trocar o
-destino não afeta o resto do app. Se o Drive se mostrar inviável, a alternativa é
-guardar a foto como BLOB no próprio D1 (limite de 2 MB por registro e 500 MB por
-banco no plano gratuito). O login usará apenas a stdlib (`hashlib`, `hmac`,
-`secrets`), com compatibilidade conferida no runtime antes do uso.
+### Segredos
+
+Seis segredos do Worker, nenhum no repositório:
+
+| Segredo | Origem |
+| --- | --- |
+| `SENHA_HASH` | `python3 scripts/senha.py \| npx wrangler secret put SENHA_HASH --env producao` |
+| `SEGREDO_SESSAO` | Aleatório: `python3 -c "import secrets;print(secrets.token_urlsafe(32))" \| npx wrangler secret put SEGREDO_SESSAO --env producao` |
+| `GOOGLE_*` (4) | `scripts/google_drive.py` |
+
+`.google.json` guarda uma cópia local dos segredos do Google (permissão 600, ignorado
+pelo Git) para os scripts. `.env`, `.dev.vars`, bancos e fotos locais também ficam fora
+do Git.
+
+### Google Drive
+
+Um projeto no Google Cloud sem faturamento, com a **Google Drive API** ativada e um
+cliente OAuth do tipo **App para computador**. O app pede só o escopo `drive.file`, não
+sensível: ele enxerga apenas os arquivos que criou. O app do Google precisa estar
+**Em produção**: em “Teste”, o Google invalida o acesso a cada 7 dias. Para publicar,
+a página Branding exige página inicial, política de privacidade e domínio autorizado,
+mesmo sem asterisco. Por isso existe a página pública `/privacidade`, e o domínio
+autorizado é `juliopatti.workers.dev`.
+
+```bash
+python3 scripts/google_drive.py ~/Downloads/client_secret_XXXX.json
+```
+
+O script abre o navegador para autorizar, cria (ou reaproveita) a pasta e envia os quatro
+segredos `GOOGLE_*` ao Worker. Se o acesso for revogado, basta rodar de novo. O uso
+normal da API do Drive é gratuito; o Google anunciou cobrança apenas para quem excede as
+cotas, com aviso prévio, algo distante de um caderno pessoal.
+
+### Atualizar o app publicado
+
+```bash
+uv run pywrangler d1 migrations apply amnesia --remote --env producao
+uv run pywrangler deploy --env producao
+```
+
+Aplique as migrações antes do deploy quando houver uma nova. O deploy informa o tempo de
+inicialização do Worker; o limite é 1 s, e o amnesia mediu entre 0,84 e 0,92 s.
+
+### Migração dos dados locais
+
+`scripts/migrar_dados.py` copiou os registros de `.wrangler/state` para o D1 publicado e
+as fotos para o Drive. O script faz uma cópia de segurança do estado local, lê dessa
+cópia, recusa um D1 publicado que já tenha itens e compara as contagens no final.
+As fotos enviadas ficam anotadas em `.wrangler/migracao-fotos.json`; repetir não
+duplica. A migração foi feita uma vez: 2 itens, 2 experiências, 9 tags e 1 foto.
+A foto no Drive foi conferida byte a byte com a local.
+
+### Validação na publicação
+
+Conferido no app publicado, com os registros do Worker (`npx wrangler tail --env producao`):
+- sem senha configurada, o app ficou fechado (503);
+- `/saude` e `/privacidade` respondem sem sessão;
+- pedir uma página sem sessão leva a `/entrar`, e o login volta ao destino;
+- migração de dados e fotos concluída e verificada;
+- no celular: login, foto migrada exibida a partir do Drive, novo registro com foto
+  gravado no Drive e exibido. Do toque em **Guardar** à confirmação levou cerca de 5 s,
+  dos quais cerca de 3,5 s são o envio ao Drive; abrir uma foto leva de 1,2 a 1,5 s.
+
+O plano gratuito limita a CPU a 10 ms por requisição. Nos registros, páginas comuns
+ficaram entre 3 e 25 ms, o cadastro em cerca de 80 ms e o login em cerca de 90 ms
+(PBKDF2), todos concluídos com sucesso. O limite não foi aplicado com rigor nesses
+testes, mas o risco existe; se aparecer o erro 1102, o primeiro passo é reduzir as
+iterações do PBKDF2 e deixar os arquivos estáticos fora do Worker.
+
+Pendente: cronometrar o registro completo, do toque em **Registrar** até **Guardar**,
+num celular real (meta: menos de 30 s).
 
 ## Próximos incrementos
-
-5. Login próprio, fotos no Google Drive, publicação em `workers.dev` e teste de
-   registro em menos de 30 segundos no celular.
 
 Um incremento por vez. Nenhuma integração com IA nesta fase.
