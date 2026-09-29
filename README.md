@@ -439,9 +439,58 @@ ficaram entre 3 e 25 ms, o cadastro em cerca de 80 ms e o login em cerca de 90 m
 testes, mas o risco existe; se aparecer o erro 1102, o primeiro passo é reduzir as
 iterações do PBKDF2 e deixar os arquivos estáticos fora do Worker.
 
-Pendente: cronometrar o registro completo, do toque em **Registrar** até **Guardar**,
-num celular real (meta: menos de 30 s).
+O dono registrou experiências com foto pelo celular no app publicado, dentro da meta
+de uso rápido, embora a espera pelo Drive ainda seja perceptível.
 
-## Próximos incrementos
+## Tecnologias e ferramentas
 
-Um incremento por vez. Nenhuma integração com IA nesta fase.
+| Parte | Tecnologia |
+| --- | --- |
+| Backend | Python em Cloudflare Workers (Pyodide), stdlib e SDK oficial `workers` |
+| Banco e busca | Cloudflare D1 (SQLite) com FTS5 |
+| Fotos | Google Drive API (publicado) e R2 simulado (local) |
+| Frontend | HTML gerado no servidor, CSS próprio, htmx 2.0.8 e JavaScript pequeno, sem build |
+| Ferramentas | uv, pywrangler e Wrangler, Node.js |
+| Testes | `unittest` (stdlib), SQLite em memória, Playwright com Chromium |
+| CI | GitHub Actions |
+
+**Assistentes de IA no desenvolvimento.** O projeto foi desenvolvido com auxílio de
+Codex (Astra) e Claude Code (Claude Opus 5.5). A arquitetura e a concepção inicial foram
+pensadas com auxílio do Opus 5.5; depois, código e testes evoluíram em iterações
+curtas. Houve controle humano constante contra excesso de engenharia: várias sugestões
+das IAs, mais robustas do que este propósito pedia, foram recusadas ou simplificadas.
+Os commits são do autor, sem coautoria de ferramentas. O app em si não usa IA.
+
+## Limitações e próximos passos
+
+Limitações conhecidas:
+- **Login simples, por escolha.** Uma senha, sem usuários, recuperação por e-mail ou
+  segundo fator. Trocar a senha é gerar um novo `SENHA_HASH`.
+- **Plano gratuito da Cloudflare.** São 10 ms de CPU por requisição. A mediana do app
+  fica abaixo disso; guardar e entrar passam, dentro da folga que a Cloudflare dá.
+  Até agora foi suficiente, sem nenhum erro (veja [Validação](#validação-na-publicação)).
+- **Tempo de resposta.** Guardar com foto leva cerca de 5 s, e abrir uma foto de 1,2 a
+  1,5 s, por causa do Drive. Funciona, mas está aquém de uma experiência ótima.
+- **Sem backup automático** do D1 publicado. As fotos ficam no Drive do dono.
+- Arquivos órfãos no Drive não são reconciliados automaticamente; não dá para mover uma
+  experiência para outro item; não houve teste em Safari/iPhone.
+
+Próximos passos:
+- **v3 — seu próprio amnesia.** Reunir os requisitos e um passo a passo para que outra
+  pessoa publique a própria instância, com a própria senha, conta Cloudflare e Drive.
+- Backup e restauração testados do D1 publicado.
+- Mais folga de CPU e menos invocações: arquivos estáticos fora do Worker e um
+  cadastro mais leve.
+
+## Versões
+
+| Versão | Estado |
+| --- | --- |
+| `v1.0.0` | Incrementos 1 a 4 funcionando localmente: cadastro, notas, fotos, busca, categorias, edição e exclusão |
+| `v2.0.0` | Incremento 5: publicado em `workers.dev` com login próprio, fotos no Google Drive e dados migrados |
+
+## Créditos e licença
+
+Autor: Julio Patti. Código sob a [licença MIT](LICENSE), uma licença livre: pode ser
+usado, modificado e redistribuído, mantendo o aviso de autoria. O htmx vem
+incluído sob a [licença Zero-Clause BSD](static/htmx.LICENSE).
