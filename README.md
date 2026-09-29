@@ -456,7 +456,10 @@ de uso rápido, embora a espera pelo Drive ainda seja perceptível.
 
 **Assistentes de IA no desenvolvimento.** O projeto foi desenvolvido com auxílio de
 Codex (Astra) e Claude Code (Claude Opus 5.5). A arquitetura e a concepção inicial foram
-pensadas com auxílio do Opus 5.5; depois, código e testes evoluíram em iterações
+pensadas com auxílio do Opus 5.5, inclusive na confecção do prompt inicial no formato
+CO-STAR (contexto, objetivo, estilo, tom, audiência e resposta). O plano mudou no
+caminho: R2 e Cloudflare Access saíram por exigirem cartão, e as categorias
+passaram de duas para sete. Depois, código e testes evoluíram em iterações
 curtas. Houve controle humano constante contra excesso de engenharia: várias sugestões
 das IAs, mais robustas do que este propósito pedia, foram recusadas ou simplificadas.
 Os commits são do autor, sem coautoria de ferramentas. O app em si não usa IA.
