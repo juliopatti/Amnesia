@@ -16,3 +16,6 @@ __pycache__/
 test-results/
 playwright-report/
 .google.json
+
+# Rascunhos
+drafits/
