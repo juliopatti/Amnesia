@@ -632,8 +632,8 @@ Próximos passos:
 | `v1.0.0` | Incrementos 1 a 4 funcionando localmente: cadastro, notas, fotos, busca, categorias, edição e exclusão |
 | `v2.0.0` | Incremento 5: publicado em `workers.dev` com login próprio, fotos no Google Drive e dados migrados |
 | `v2.2.0` | Passo a passo para publicar a própria instância e diagrama de arquitetura gerado automaticamente |
-| `v2.3.0` | Versão da entrega: GIF de demonstração gerado por comando, Makefile, seção sobre o uso de IA e índice no README |
-| `v2.4.0` | App instalável na tela inicial do celular: manifest e ícones (PWA) |
+| `v2.3.0` | GIF de demonstração gerado por comando, Makefile, seção sobre o uso de IA e índice no README |
+| `v2.4.0` | Versão da entrega: app instalável na tela inicial do celular: manifest e ícones (PWA) |
 
 ## Créditos e licença
 
