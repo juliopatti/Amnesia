@@ -20,7 +20,8 @@ from servicos import (entrar, verificar_base, buscar, criar_item, registrar_expe
                       editar_item, editar_experiencia, excluir_experiencia, excluir_foto, excluir_item)
 
 
-ESTATICOS = ("/estilo.css", "/fotos.js", "/htmx.min.js", "/seta.svg")
+ESTATICOS = ("/estilo.css", "/fotos.js", "/htmx.min.js", "/seta.svg",
+             "/manifest.webmanifest", "/icone-192.png", "/icone-512.png")
 COOKIE_SESSAO = "sessao"
 # Token de acesso do Drive reaproveitado entre requisições do mesmo isolate.
 CACHE_DRIVE = {}
