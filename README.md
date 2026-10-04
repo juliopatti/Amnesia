@@ -6,6 +6,21 @@ pessoa; repositório de código público durante a avaliação da disciplina.
 [Boas práticas](BOAS_PRATICAS.md) descreve as convenções de código, documentação e
 testes. Nesta fase, os commits vão direto para `main`.
 
+## Conteúdo
+
+- [O que funciona agora](#o-que-funciona-agora--incremento-5)
+- [Rodar no seu computador](#rodar-no-seu-computador-linux)
+- [Testes de navegador e integração real](#testes-de-navegador-e-integração-real)
+- [Integração contínua](#integração-contínua)
+- [Organização e decisões técnicas](#organização-e-decisões-técnicas)
+- [Publicação](#publicação)
+  - [Publicar a sua própria instância](#publicar-a-sua-própria-instância)
+- [Tecnologias e ferramentas](#tecnologias-e-ferramentas)
+- [Como a IA foi usada](#como-a-ia-foi-usada)
+- [Limitações e próximos passos](#limitações-e-próximos-passos)
+- [Versões](#versões)
+- [Créditos e licença](#créditos-e-licença)
+
 ## O que funciona agora — incremento 5
 
 - Registrar itens em sete categorias: **Bares e restaurantes**, **Lugares** (cidades,
