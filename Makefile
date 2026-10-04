@@ -1,6 +1,6 @@
 # Atalhos para os comandos do README. `make` ou `make ajuda` lista todos.
 .DEFAULT_GOAL := ajuda
-.PHONY: ajuda instalar testar banco senha rodar navegador banco-e2e e2e diagrama publicar
+.PHONY: ajuda instalar testar banco senha rodar navegador banco-e2e e2e diagrama demo publicar
 
 ajuda: ## Lista os atalhos disponíveis
 	@grep -E '^[a-z0-9-]+:.*## ' $(MAKEFILE_LIST) | awk -F ':.*## ' '{printf "  make %-10s %s\n", $$1, $$2}'
@@ -32,6 +32,9 @@ e2e: banco-e2e ## Roda os testes de navegador
 
 diagrama: ## Gera docs/arquitetura.svg a partir de docs/arquitetura.mmd
 	npm run diagrama
+
+demo: ## Grava docs/demo.gif com dados fictícios
+	npm run demo
 
 publicar: ## Aplica as migrações e publica na Cloudflare (ambiente producao)
 	uv run pywrangler d1 migrations apply amnesia --remote --env producao

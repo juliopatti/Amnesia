@@ -6,6 +6,14 @@ pessoa; repositório de código público durante a avaliação da disciplina.
 [Boas práticas](BOAS_PRATICAS.md) descreve as convenções de código, documentação e
 testes. Nesta fase, os commits vão direto para `main`.
 
+![Demonstração: registrar uma experiência com detalhes, buscar por “coxinha” e abrir o item](docs/demo.gif)
+
+Gravação do app rodando no computador, com dados fictícios: registrar uma experiência
+com nota, pedido, preço, tags, endereço e telefone, encontrá-la pela busca e abrir a
+página do item, com os botões **Ligar** e **WhatsApp**.
+A gravação é refeita por `make demo` ([`scripts/demo.cjs`](scripts/demo.cjs)), que usa
+um banco isolado.
+
 ## Conteúdo
 
 - [O que funciona agora](#o-que-funciona-agora--incremento-5)
@@ -69,7 +77,7 @@ segredos. Nenhum destes passos altera sua conta Cloudflare.
 
 Cada passo tem um atalho no `Makefile`: `make instalar`, `make testar`, `make banco`,
 `make senha` e `make rodar`. `make` sozinho lista todos, incluindo `make e2e`,
-`make diagrama` e `make publicar`.
+`make diagrama`, `make demo` e `make publicar`.
 
 ### 1. Confira as ferramentas
 
@@ -102,7 +110,7 @@ npm ci
 
 O uv cria `.venv/`. O pywrangler pode criar `.venv-workers/` e baixar o Python do
 runtime Cloudflare automaticamente. Isso não substitui o Python do sistema.
-O npm instala Wrangler, Playwright e Mermaid nas versões do `package-lock.json`.
+O npm instala Wrangler, Playwright, Mermaid e ffmpeg nas versões do `package-lock.json`.
 Não é necessário ativar ambientes virtuais manualmente.
 
 A aplicação usa a SDK oficial de Workers e uma cópia local do **htmx 2.0.8**
@@ -554,6 +562,7 @@ de uso rápido, embora a espera pelo Drive ainda seja perceptível.
 | Ferramentas | uv, pywrangler e Wrangler, Node.js |
 | Testes | `unittest` (stdlib), SQLite em memória, Playwright com Chromium |
 | Diagrama | Mermaid, com a imagem gerada pelo Playwright |
+| Demonstração | GIF gravado pelo Playwright e convertido com ffmpeg |
 | CI | GitHub Actions |
 
 ## Como a IA foi usada

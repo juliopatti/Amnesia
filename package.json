@@ -3,9 +3,11 @@
   "private": true,
   "scripts": {
     "test:e2e": "playwright test",
-    "diagrama": "node scripts/diagrama.cjs"
+    "diagrama": "node scripts/diagrama.cjs",
+    "demo": "node scripts/demo.cjs"
   },
   "devDependencies": {
+    "@ffmpeg-installer/ffmpeg": "1.1.0",
     "@playwright/test": "1.63.0",
     "mermaid": "12.1.0",
     "wrangler": "4.139.0"
