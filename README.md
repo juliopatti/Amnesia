@@ -317,6 +317,9 @@ registra no `main`. Para gerar no computador, use `npm run diagrama`.
 | `static/` | CSS, ícone da seta dos selects, htmx local e JavaScript de formulário/fotos |
 | `migrations/` | Evolução do esquema sem reescrever migrações anteriores |
 | `tests/` | Regras, serviços com dublês, SQL real em SQLite e testes de navegador |
+| `scripts/` | Senha do login, autorização do Google Drive, migração dos dados locais e geração do diagrama e do GIF |
+| `docs/` | Prompt inicial, fonte e imagem do diagrama de arquitetura e GIF de demonstração |
+| `Makefile` | Atalhos para os comandos deste README |
 
 O item contém nome, descrição e detalhes em JSON por categoria. `CATEGORIAS`, em
 `src/dominio.py`, é a fonte única de nomes, ordem e campos: o formulário, os filtros
@@ -626,7 +629,7 @@ Próximos passos:
 | --- | --- |
 | `v1.0.0` | Incrementos 1 a 4 funcionando localmente: cadastro, notas, fotos, busca, categorias, edição e exclusão |
 | `v2.0.0` | Incremento 5: publicado em `workers.dev` com login próprio, fotos no Google Drive e dados migrados |
-| `v2.2.0` | Documentação da entrega: passo a passo para publicar a própria instância e diagrama de arquitetura gerado automaticamente |
+| `v2.2.0` | Documentação da entrega: passo a passo para publicar a própria instância, diagrama de arquitetura e GIF de demonstração gerados por comando, Makefile, seção sobre o uso de IA e índice |
 
 ## Créditos e licença
 

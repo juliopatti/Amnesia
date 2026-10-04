@@ -6,7 +6,9 @@
 - Desenvolvimento direto na `main` nesta fase, com commits pequenos e coerentes.
   Pull requests serão adotados quando o tamanho do projeto justificar.
 - Usar a identidade Git do proprietário nos commits, sem trailers de coautoria
-  nem assinaturas automáticas de ferramentas.
+  nem assinaturas automáticas de ferramentas. Há uma possibilidade prevista de commit
+  automático: o workflow Diagrama pode registrar a imagem regenerada como
+  `github-actions[bot]`. O histórico tem um commit assim, feito como exemplo.
 - Não exigir issues, diário de tarefas, histórico de prompts ou registro de
   contribuições de ferramentas. A documentação descreve o sistema e como validá-lo.
 - Antes de um commit, revisar o diff e os arquivos incluídos, executar os testes
@@ -73,7 +75,7 @@ conta Cloudflare. O workflow não faz deploy.
 
 Após enviar o código ao GitHub, abra a aba **Actions**, selecione **Testes** e confira
 os três resultados. Em caso de falha, abra o job e o passo de execução dos testes
-para ver qual caso falhou. A execução hospedada só será confirmada após esse envio.
+para ver qual caso falhou.
 
 ## Documentação e dados
 
@@ -82,8 +84,9 @@ para ver qual caso falhou. A execução hospedada só será confirmada após ess
   README; criar documentos separados apenas quando necessário para compreensão.
 - Manter exemplos e dados de teste fictícios, sem fotos, avaliações ou dados pessoais
   reais no repositório público.
-- Segredos ficam em `.env` local ou na configuração da Cloudflare. Versionar apenas
-  exemplos sem valores secretos. Revisar o conteúdo antes de publicar.
+- Segredos ficam em `.dev.vars` e `.google.json` locais, ignorados pelo Git, ou nos
+  segredos do Worker na Cloudflare. Versionar apenas exemplos sem valores secretos.
+  Revisar o conteúdo antes de publicar.
 - Não confundir código público com aplicativo público: páginas e fotos do app
   exigem login próprio, e as fotos ficam numa pasta privada do Drive.
 - Antes de migrar ou converter dados reais, copiar `.wrangler/state`.
