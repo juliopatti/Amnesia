@@ -316,7 +316,7 @@ registra no `main`. Para gerar no computador, use `npm run diagrama`.
 | `src/acesso.py` | Hash da senha, sessão assinada e destino seguro após o login |
 | `src/worker.py` | Rotas HTTP, limites de corpo e checagem de origem |
 | `src/paginas.py` | HTML com escape de valores |
-| `static/` | CSS, ícone da seta dos selects, htmx local e JavaScript de formulário/fotos |
+| `static/` | CSS, ícone da seta dos selects, htmx local, JavaScript de formulário/fotos, e manifest e ícones do app instalável |
 | `migrations/` | Evolução do esquema sem reescrever migrações anteriores |
 | `tests/` | Regras, serviços com dublês, SQL real em SQLite e testes de navegador |
 | `scripts/` | Senha do login, autorização do Google Drive, migração dos dados locais e geração do diagrama e do GIF |
@@ -563,7 +563,7 @@ de uso rápido, embora a espera pelo Drive ainda seja perceptível.
 | Backend | Python em Cloudflare Workers (Pyodide), stdlib e SDK oficial `workers` |
 | Banco e busca | Cloudflare D1 (SQLite) com FTS5 |
 | Fotos | Google Drive API (publicado) e R2 simulado (local) |
-| Frontend | HTML gerado no servidor, CSS próprio, htmx 2.0.8 e JavaScript pequeno, sem build |
+| Frontend | HTML gerado no servidor, CSS próprio, htmx 2.0.8 e JavaScript pequeno, sem build; manifest de PWA para instalar no celular |
 | Ferramentas | uv, pywrangler e Wrangler, Node.js |
 | Testes | `unittest` (stdlib), SQLite em memória, Playwright com Chromium |
 | Diagrama | Mermaid, com a imagem gerada pelo Playwright |
