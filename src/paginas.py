@@ -26,6 +26,8 @@ def estrutura(conteudo, titulo="Seu caderno", filtros="", publica=False):
 <meta name="htmx-config" content='{HTMX_CONFIG}'>
 <title>{escape(titulo)} · amnesia</title>
 <link rel="stylesheet" href="/estilo.css">
+<link rel="manifest" href="/manifest.webmanifest"><meta name="theme-color" content="#f6f3ec">
+<link rel="icon" href="/icone-192.png"><link rel="apple-touch-icon" href="/icone-192.png">
 <script src="/htmx.min.js" defer></script><script src="/fotos.js" defer></script>
 </head><body>
 <a class="pular" href="#conteudo">Pular para o conteúdo</a>
