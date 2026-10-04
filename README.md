@@ -541,15 +541,38 @@ de uso rápido, embora a espera pelo Drive ainda seja perceptível.
 | Diagrama | Mermaid, com a imagem gerada pelo Playwright |
 | CI | GitHub Actions |
 
-**Assistentes de IA no desenvolvimento.** O projeto foi desenvolvido com auxílio de
-Codex (Astra) e Claude Code (Claude Opus 5.5). A arquitetura e a concepção inicial foram
-pensadas com auxílio do Opus 5.5, inclusive na confecção do [prompt inicial](docs/co-star.md) no formato
-CO-STAR (contexto, objetivo, estilo, tom, audiência e resposta). O plano mudou no
-caminho: R2 e Cloudflare Access saíram por exigirem cartão, e as categorias
-passaram de duas para sete. Depois, código e testes evoluíram em iterações
-curtas. Houve controle humano constante contra excesso de engenharia: várias sugestões
-das IAs, mais robustas do que este propósito pedia, foram recusadas ou simplificadas.
-Os commits são do autor, sem coautoria de ferramentas. O app em si não usa IA.
+## Como a IA foi usada
+
+O amnesia foi desenvolvido com dois assistentes: Codex (Astra) e Claude Code
+(Claude Opus 5.5). O app em si não usa IA.
+
+**Concepção e arquitetura.** O projeto começou por um
+[prompt inicial](docs/co-star.md) no formato CO-STAR (contexto, objetivo, estilo,
+tom, audiência e resposta), escrito com auxílio do Opus 5.5. A primeira resposta
+pedida não tinha código: esquema do banco, estrutura de arquivos, tarefas manuais
+e um plano de incrementos testáveis um a um.
+
+**Implementação.** Código e testes evoluíram em iterações curtas, um incremento
+por vez. A documentação, o diagrama de arquitetura e o roteiro de publicação
+também foram escritos com os assistentes.
+
+**O que mudou no caminho.** R2 e Cloudflare Access saíram do plano por exigirem
+cartão, e as categorias passaram de duas para sete. O arquivo do prompt inicial
+registra essas mudanças.
+
+**Revisão humana.** Houve controle constante contra excesso de engenharia: várias
+sugestões das IAs, mais robustas do que este propósito pedia, foram recusadas ou
+simplificadas. Afirmações dos assistentes sobre serviços externos também
+precisaram ser conferidas antes de entrar na documentação.
+
+**Desafio superado.** O projeto em si: um app completo, testado e publicado. As
+maiores dificuldades foram as linguagens além de Python e SQL (JavaScript, HTML
+e CSS), o acoplamento com as tecnologias de publicação (Cloudflare Workers, D1 e
+Google Drive) e os recursos de apoio, como o CI, o diagrama gerado
+automaticamente e o Makefile. Os assistentes foram decisivos em todas elas.
+
+**Ganho de produtividade.** Difícil de estimar, mas muito alto, inclusive em
+Python e SQL, que o autor já dominava.
 
 ## Limitações e próximos passos
 
