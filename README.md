@@ -262,6 +262,16 @@ Safari/iPhone.
 
 ## Organização e decisões técnicas
 
+![Arquitetura do amnesia: navegador, módulos do Worker e armazenamentos](docs/arquitetura.svg)
+
+O Worker recebe cada requisição, confere a sessão e chama um serviço; o serviço valida
+com as regras do domínio e grava pelo armazenamento, que o Worker cria e entrega pronto.
+A resposta é HTML montado no servidor.
+
+O diagrama é escrito em Mermaid em [`docs/arquitetura.mmd`](docs/arquitetura.mmd). Ao alterar
+esse arquivo, o workflow [Diagrama](.github/workflows/diagrama.yml) gera a imagem de novo e a
+registra no `main`. Para gerar no computador, use `npm run diagrama`.
+
 | Arquivo | Responsabilidade |
 | --- | --- |
 | `src/dominio.py` | Validações, normalizações e montagem segura da consulta de busca |

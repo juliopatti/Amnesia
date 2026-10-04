@@ -1,0 +1,28 @@
+flowchart TD
+    nav["Navegador<br/>HTML, htmx e fotos.js"]
+
+    subgraph cf["Cloudflare Worker em Python"]
+        worker["worker.py<br/>rotas, limites e origem"]
+        paginas["paginas.py<br/>HTML com escape"]
+        servicos["servicos.py<br/>buscar, criar, editar e excluir"]
+        acesso["acesso.py<br/>senha e sessão"]
+        dominio["dominio.py<br/>validações e consulta de busca"]
+        armazenamento["armazenamento.py<br/>SQL, FTS e fotos"]
+    end
+
+    d1[("D1<br/>SQLite com FTS5")]
+    drive[("Google Drive<br/>fotos, na publicação")]
+    r2[("R2 simulado<br/>fotos, local e testes")]
+
+    nav -->|HTTP| worker
+    worker --> paginas
+    worker --> servicos
+    worker --> acesso
+    worker -.->|cria e injeta| armazenamento
+    paginas --> dominio
+    servicos --> dominio
+    servicos --> acesso
+    servicos --> armazenamento
+    armazenamento --> d1
+    armazenamento --> drive
+    armazenamento --> r2
