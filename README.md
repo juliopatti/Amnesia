@@ -169,7 +169,8 @@ Depois, na página inicial:
    destacado no relato — mesmo que o nome do bar não tenha essa palavra.
 2. Troque por `COXINHA` ou `coxínha`: maiúsculas e acentos não importam. Plural e
    diminutivo também não: `espetinho` encontra “espeto”, e vice-versa.
-3. Escolha **Lugares** ou **Produtos** e uma faixa em **Média de … até …**.
+3. Escolha uma categoria, como **Bares e restaurantes** ou **Produtos**, e uma faixa
+   em **Média de … até …**.
    Com JavaScript, os resultados mudam sem recarregar; sem ele, use **Buscar**.
 4. Teste entradas estranhas, como `"NOT (` ou `!!!`: a busca responde com uma
    mensagem, nunca com erro. **Limpar busca** volta à lista completa.
@@ -196,7 +197,7 @@ página de confirmação posteriormente. Uma foto que o navegador não consiga a
 (por exemplo, certos arquivos HEIC) deve ser exportada para JPEG, PNG ou WebP.
 
 Sem JavaScript, cadastro, edição, exclusão e seleção de nota continuam funcionando; a redução e o
-envio de fotos precisam de JavaScript. Os detalhes das duas categorias ficam
+envio de fotos precisam de JavaScript. Os detalhes de todas as categorias ficam
 visíveis nesse modo, mas o servidor usa somente os da categoria selecionada.
 
 ## Testes de navegador e integração real
@@ -370,38 +371,102 @@ R2 e com `workers_dev` ligado. Sem `--env producao`, todos os comandos continuam
 O `database_id` de zeros da configuração principal não deve mudar: o banco local em
 `.wrangler/state` depende dele.
 
+### Publicar a sua própria instância
+
+Os passos abaixo, nesta ordem, levam de um clone do repositório a um amnesia seu, com a
+sua conta Cloudflare, a sua senha e o seu Google Drive. Faça antes os passos 1 e 2 de
+[Rodar no seu computador](#rodar-no-seu-computador-linux). O roteiro foi montado a partir
+da publicação do autor; ainda não foi seguido do zero por outra pessoa.
+
+**1. Entre na Cloudflare.** Crie uma conta gratuita em <https://dash.cloudflare.com/sign-up>
+(não pede cartão) e autorize o Wrangler:
+
+```bash
+npx wrangler login
+```
+
+**2. Crie o seu banco.**
+
+```bash
+npx wrangler d1 create amnesia
+```
+
+Se o Wrangler oferecer para alterar a configuração por você, responda **não**: ele
+escreveria na parte local do arquivo. Copie o `database_id` que o comando mostra.
+
+**3. Aponte a configuração para o seu banco.** Em `wrangler.jsonc`, dentro de
+`env.producao`, troque o `database_id` pelo seu. O que está no repositório é o da
+instância do autor e só funciona na conta dele. Esse identificador não é segredo.
+
+**4. Crie as tabelas e publique.**
+
+```bash
+uv run pywrangler d1 migrations apply amnesia --remote --env producao
+uv run pywrangler deploy --env producao
+```
+
+No primeiro deploy, a Cloudflare pede para você escolher o subdomínio da conta. O app
+fica em `https://amnesia.SEU-SUBDOMINIO.workers.dev`. Ele ainda não tem senha, por isso
+responde “O login ainda não foi configurado” — fechado, nunca aberto.
+
+**5. Crie a senha.**
+
+```bash
+python3 scripts/senha.py | npx wrangler secret put SENHA_HASH --env producao
+python3 -c "import secrets;print(secrets.token_urlsafe(32))" | npx wrangler secret put SEGREDO_SESSAO --env producao
+```
+
+A partir daqui dá para entrar e registrar experiências sem foto.
+
+**6. Prepare o Google Drive.** No [Google Cloud Console](https://console.cloud.google.com/),
+com a conta dona do Drive:
+
+1. Crie um projeto, sem conta de faturamento.
+2. Em **APIs e serviços → Biblioteca**, procure a **Google Drive API** e clique em **Ativar**.
+3. Em **Google Auth Platform** (na documentação em português, “Plataforma de autenticação
+   do Google”), configure o app como **Externo**. Em **Branding**,
+   informe a página inicial (`https://amnesia.SEU-SUBDOMINIO.workers.dev`), a política de
+   privacidade (a mesma, com `/privacidade` no final) e o domínio autorizado
+   (`SEU-SUBDOMINIO.workers.dev`). O Google exige os três para publicar, mesmo sem
+   asterisco; por isso o deploy vem antes.
+4. Em **Público-alvo** (Audience), publique o app, para o status ficar **Em produção**.
+   Em “Teste”, o Google invalida o acesso a cada 7 dias.
+5. Em **Clientes** (Clients), crie um cliente OAuth do tipo **App para computador** e baixe o JSON.
+
+Os nomes de menus e botões podem aparecer um pouco diferentes: o Google muda o painel
+com frequência, e a tradução varia conforme o idioma da conta. Se um nome não bater,
+procure o equivalente mais próximo.
+
+O app pede só o escopo `drive.file`, não sensível: ele enxerga apenas os arquivos que
+criou.
+
+**7. Autorize o Drive.**
+
+```bash
+python3 scripts/google_drive.py ~/Downloads/client_secret_XXXX.json
+```
+
+O script abre o navegador para autorizar, cria (ou reaproveita) a pasta `amnesia-fotos` e
+envia os quatro segredos `GOOGLE_*` ao Worker. Se o acesso for revogado, basta rodar de
+novo. O uso normal da API do Drive é gratuito; o Google anunciou cobrança apenas para
+quem excede as cotas, com aviso prévio, algo distante de um caderno pessoal.
+
+**8. Confira.** Abra o endereço do passo 4, entre com a senha e registre uma experiência
+com foto. A foto deve aparecer na pasta `amnesia-fotos` do seu Drive.
+
 ### Segredos
 
 Seis segredos do Worker, nenhum no repositório:
 
 | Segredo | Origem |
 | --- | --- |
-| `SENHA_HASH` | `python3 scripts/senha.py \| npx wrangler secret put SENHA_HASH --env producao` |
-| `SEGREDO_SESSAO` | Aleatório: `python3 -c "import secrets;print(secrets.token_urlsafe(32))" \| npx wrangler secret put SEGREDO_SESSAO --env producao` |
-| `GOOGLE_*` (4) | `scripts/google_drive.py` |
+| `SENHA_HASH` | `scripts/senha.py` (passo 5) |
+| `SEGREDO_SESSAO` | Aleatório (passo 5) |
+| `GOOGLE_*` (4) | `scripts/google_drive.py` (passo 7) |
 
 `.google.json` guarda uma cópia local dos segredos do Google (permissão 600, ignorado
 pelo Git) para os scripts. `.env`, `.dev.vars`, bancos e fotos locais também ficam fora
 do Git.
-
-### Google Drive
-
-Um projeto no Google Cloud sem faturamento, com a **Google Drive API** ativada e um
-cliente OAuth do tipo **App para computador**. O app pede só o escopo `drive.file`, não
-sensível: ele enxerga apenas os arquivos que criou. O app do Google precisa estar
-**Em produção**: em “Teste”, o Google invalida o acesso a cada 7 dias. Para publicar,
-a página Branding exige página inicial, política de privacidade e domínio autorizado,
-mesmo sem asterisco. Por isso existe a página pública `/privacidade`, e o domínio
-autorizado é `juliopatti.workers.dev`.
-
-```bash
-python3 scripts/google_drive.py ~/Downloads/client_secret_XXXX.json
-```
-
-O script abre o navegador para autorizar, cria (ou reaproveita) a pasta e envia os quatro
-segredos `GOOGLE_*` ao Worker. Se o acesso for revogado, basta rodar de novo. O uso
-normal da API do Drive é gratuito; o Google anunciou cobrança apenas para quem excede as
-cotas, com aviso prévio, algo distante de um caderno pessoal.
 
 ### Atualizar o app publicado
 
@@ -479,8 +544,9 @@ Limitações conhecidas:
   experiência para outro item; não houve teste em Safari/iPhone.
 
 Próximos passos:
-- **v3 — seu próprio amnesia.** Reunir os requisitos e um passo a passo para que outra
-  pessoa publique a própria instância, com a própria senha, conta Cloudflare e Drive.
+- **v3 — seu próprio amnesia.** O [passo a passo](#publicar-a-sua-própria-instância)
+  já existe; falta validá-lo com outra pessoa, do zero, e tirar o `database_id` do autor
+  do repositório.
 - Backup e restauração testados do D1 publicado.
 - Mais folga de CPU e menos invocações: arquivos estáticos fora do Worker e um
   cadastro mais leve.
