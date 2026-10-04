@@ -61,6 +61,8 @@ um banco isolado.
   (nota, relato, data, pedido, preço, tags e “voltaria?”). A busca acompanha.
 - **Excluir** um item inteiro, uma experiência ou uma foto, sempre com uma tela de
   confirmação que diz o que vai junto.
+- **Instalar no celular**: no Chrome do Android, ⋮ → **Adicionar à tela inicial**. O
+  app ganha ícone próprio e abre em tela cheia, sem a barra do navegador.
 
 Tocar no nome de um item abre a página dele: **nota média** em estrelas, resumo do
 “Voltaria?” (quantas respostas foram sim e qual foi a última), descrição, endereço,
@@ -631,6 +633,7 @@ Próximos passos:
 | `v2.0.0` | Incremento 5: publicado em `workers.dev` com login próprio, fotos no Google Drive e dados migrados |
 | `v2.2.0` | Passo a passo para publicar a própria instância e diagrama de arquitetura gerado automaticamente |
 | `v2.3.0` | Versão da entrega: GIF de demonstração gerado por comando, Makefile, seção sobre o uso de IA e índice no README |
+| `v2.4.0` | App instalável na tela inicial do celular: manifest e ícones (PWA) |
 
 ## Créditos e licença
 
