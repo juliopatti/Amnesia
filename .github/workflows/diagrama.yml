@@ -1,0 +1,48 @@
+name: Diagrama
+
+# Regenera docs/arquitetura.svg quando a fonte Mermaid ou o gerador mudam.
+on:
+  push:
+    branches: [main]
+    paths:
+      - docs/arquitetura.mmd
+      - scripts/diagrama.cjs
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: diagrama
+  cancel-in-progress: true
+
+jobs:
+  gerar:
+    name: Gerar imagem do diagrama de arquitetura
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Obter código
+        uses: actions/checkout@v7
+      - name: Preparar Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: "22"
+          cache: npm
+      - name: Instalar ferramentas
+        run: |
+          npm ci
+          npx playwright install --with-deps chromium
+      - name: Gerar docs/arquitetura.svg
+        run: npm run diagrama
+      - name: Registrar a imagem, se mudou
+        run: |
+          if git diff --quiet -- docs/arquitetura.svg; then
+            echo "Imagem já estava atualizada."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/arquitetura.svg
+          git commit -m "docs: atualiza a imagem do diagrama de arquitetura"
+          git push
