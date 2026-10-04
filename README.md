@@ -83,12 +83,13 @@ npm ci
 
 O uv cria `.venv/`. O pywrangler pode criar `.venv-workers/` e baixar o Python do
 runtime Cloudflare automaticamente. Isso não substitui o Python do sistema.
-O npm instala Wrangler e Playwright nas versões do `package-lock.json`.
+O npm instala Wrangler, Playwright e Mermaid nas versões do `package-lock.json`.
 Não é necessário ativar ambientes virtuais manualmente.
 
 A aplicação usa a SDK oficial de Workers e uma cópia local do **htmx 2.0.8**
-([licença](static/htmx.LICENSE)). Playwright é exclusivo dos testes de navegador;
-Wrangler é a ferramenta oficial de desenvolvimento. Não há ORM, framework web,
+([licença](static/htmx.LICENSE)). Playwright serve aos testes de navegador e, com o
+Mermaid, à geração do diagrama de arquitetura; Wrangler é a ferramenta oficial de
+desenvolvimento. Não há ORM, framework web,
 biblioteca de processamento de imagens ou dependência de CDN.
 
 ### 3. Execute os testes offline
@@ -254,6 +255,12 @@ mostra as execuções de cada push. O workflow configura:
 
 Não exige segredos Cloudflare e não realiza deploy. As dependências são baixadas
 na preparação do runner; os testes do app usam apenas recursos locais.
+
+Um segundo workflow, [Diagrama](https://github.com/juliopatti/Amnesia/actions/workflows/diagrama.yml),
+roda só quando `docs/arquitetura.mmd` ou `scripts/diagrama.cjs` mudam no `main`. Ele gera
+`docs/arquitetura.svg` e, se a imagem mudou, registra um commit do `github-actions[bot]`.
+É o único workflow com permissão de escrita no repositório. Depois dele, faça `git pull`
+antes do próximo push.
 
 Validação do incremento 5: **103 testes offline e 11 cenários de navegador aprovados**,
 localmente e no GitHub Actions. O CI não usa a conta Cloudflare nem o Google; o que foi
@@ -527,6 +534,7 @@ de uso rápido, embora a espera pelo Drive ainda seja perceptível.
 | Frontend | HTML gerado no servidor, CSS próprio, htmx 2.0.8 e JavaScript pequeno, sem build |
 | Ferramentas | uv, pywrangler e Wrangler, Node.js |
 | Testes | `unittest` (stdlib), SQLite em memória, Playwright com Chromium |
+| Diagrama | Mermaid, com a imagem gerada pelo Playwright |
 | CI | GitHub Actions |
 
 **Assistentes de IA no desenvolvimento.** O projeto foi desenvolvido com auxílio de
@@ -567,6 +575,7 @@ Próximos passos:
 | --- | --- |
 | `v1.0.0` | Incrementos 1 a 4 funcionando localmente: cadastro, notas, fotos, busca, categorias, edição e exclusão |
 | `v2.0.0` | Incremento 5: publicado em `workers.dev` com login próprio, fotos no Google Drive e dados migrados |
+| `v2.2.0` | Documentação da entrega: passo a passo para publicar a própria instância e diagrama de arquitetura gerado automaticamente |
 
 ## Créditos e licença
 
