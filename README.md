@@ -52,6 +52,10 @@ Execute os blocos **um por vez**, no terminal aberto na pasta que contém este
 README. Se um comando falhar, pare nesse passo e copie a mensagem de erro sem
 segredos. Nenhum destes passos altera sua conta Cloudflare.
 
+Cada passo tem um atalho no `Makefile`: `make instalar`, `make testar`, `make banco`,
+`make senha` e `make rodar`. `make` sozinho lista todos, incluindo `make e2e`,
+`make diagrama` e `make publicar`.
+
 ### 1. Confira as ferramentas
 
 ```bash
