@@ -629,7 +629,8 @@ Próximos passos:
 | --- | --- |
 | `v1.0.0` | Incrementos 1 a 4 funcionando localmente: cadastro, notas, fotos, busca, categorias, edição e exclusão |
 | `v2.0.0` | Incremento 5: publicado em `workers.dev` com login próprio, fotos no Google Drive e dados migrados |
-| `v2.2.0` | Documentação da entrega: passo a passo para publicar a própria instância, diagrama de arquitetura e GIF de demonstração gerados por comando, Makefile, seção sobre o uso de IA e índice |
+| `v2.2.0` | Passo a passo para publicar a própria instância e diagrama de arquitetura gerado automaticamente |
+| `v2.3.0` | Versão da entrega: GIF de demonstração gerado por comando, Makefile, seção sobre o uso de IA e índice no README |
 
 ## Créditos e licença
 
